@@ -1,15 +1,9 @@
 import { z } from 'zod'
-import type { ItemSummary, LocationRef } from '../../../shared/types/terminal'
+import type { LookupResult } from '../../../shared/types/terminal'
 import { HomeboxError } from '../../homebox/client'
 import { toItemSummary } from '../../homebox/mappers'
 
 const Query = z.object({ code: z.string().trim().min(1).max(500) })
-
-export interface LookupResult {
-  items: ItemSummary[]
-  /** Set when the code is a location label (useful for picking the target shelf). */
-  location: LocationRef | null
-}
 
 /** Resolves a scanned barcode / QR code. */
 export default defineTerminalHandler(async (event): Promise<LookupResult> => {

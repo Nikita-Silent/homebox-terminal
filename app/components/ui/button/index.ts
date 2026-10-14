@@ -4,34 +4,28 @@ import { cva } from "class-variance-authority"
 export { default as Button } from "./Button.vue"
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  // Label-world button: square die-cut frame, condensed caps, inverts while pressed.
+  "t-label inline-flex items-center justify-center gap-3 border-[3px] border-ink whitespace-nowrap transition-[background-color,color,transform] duration-150 select-none cursor-pointer disabled:pointer-events-none disabled:border-dashed disabled:bg-paper disabled:text-ink-soft focus-visible:outline-offset-[-9px] focus-visible:outline-[3px] active:translate-y-px [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-5 shrink-0 [&_svg]:shrink-0 [&_svg]:stroke-[2.5]",
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
+        default: "bg-ink text-paper hover:bg-ink-soft active:bg-paper active:text-ink",
+        outline: "bg-paper text-ink hover:bg-wash active:bg-ink active:text-paper",
+        ghost: "border-transparent bg-transparent text-ink hover:border-ink active:bg-ink active:text-paper",
+        // No colour in this world: destructive differs only by its words and icon.
+        destructive: "bg-ink text-paper hover:bg-ink-soft active:bg-paper active:text-ink",
+        secondary: "bg-wash text-ink hover:bg-paper active:bg-ink active:text-paper",
+        link: "border-transparent text-ink underline underline-offset-4 decoration-2",
       },
       size: {
-        "default": "h-9 px-4 py-2 has-[>svg]:px-3",
-        "xs": "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        "sm": "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        "lg": "h-10 rounded-md px-6 has-[>svg]:px-4",
-        "icon": "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
-        // Touch / kiosk sizes
-        "touch": "h-14 rounded-lg px-6 text-base has-[>svg]:px-5 [&_svg:not([class*='size-'])]:size-5",
-        "tile": "h-auto min-h-28 flex-col rounded-xl p-6 text-lg whitespace-normal [&_svg:not([class*='size-'])]:size-8",
+        "default": "h-12 px-5 text-base",
+        "sm": "h-10 px-4 text-sm",
+        "lg": "h-14 px-7 text-lg",
+        "icon": "size-12",
+        "icon-lg": "size-16 [&_svg:not([class*='size-'])]:size-7",
+        // Gloved hands: 64px minimum.
+        "touch": "h-16 px-7 text-xl [&_svg:not([class*='size-'])]:size-6",
+        "tile": "h-auto min-h-36 flex-col items-start justify-between p-6 text-3xl whitespace-normal text-left [&_svg:not([class*='size-'])]:size-10",
       },
     },
     defaultVariants: {

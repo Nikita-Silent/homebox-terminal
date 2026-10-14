@@ -18,3 +18,7 @@ node_modules
 # Logs / OS
 *.log
 .DS_Store
+
+# Impeccable working files (screenshots, review drafts, decision payloads)
+.impeccable/*
+!.impeccable/design.json

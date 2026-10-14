@@ -50,6 +50,11 @@ export interface StepState {
 /** Names captured when the operation was accepted, so results can be shown without extra requests. */
 export interface TransferContext {
   itemName: string
+  itemAssetId?: string
+  /** Root → location paths, for printing on the result label. Optional: older journal records lack them. */
+  sourcePath?: LocationRef[]
+  targetPath?: LocationRef[]
+  mergeIntoAssetId?: string | null
   sourceQuantity: number
   sourceLocation: LocationRef | null
   targetLocation: LocationRef
@@ -66,6 +71,7 @@ export interface TransferRecord {
   steps: Partial<Record<StepName, StepState>>
   /** Id of the Item created at the target by a `split`. */
   copyId: string | null
+  copyAssetId?: string | null
   result: TransferResult | null
   message: string | null
   attempts: number

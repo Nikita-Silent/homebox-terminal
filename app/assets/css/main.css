@@ -1,60 +1,50 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/roboto-flex/full.css";
 
-@custom-variant dark (&:is(.dark *));
+/*
+  World: warehouse thermal label. White thermal paper, black print, thick die-cut frames.
+  Light only: the terminal stands under harsh warehouse light; black-and-white is a brand commitment.
+  State never relies on colour: inverted = selected/pressed, diagonal hatch = pending,
+  cross-hatch = needs attention, dashed frame = unavailable.
+*/
 
 :root {
-  --radius: 0.75rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --success: oklch(0.627 0.17 149.2);
-  --success-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
+  --radius: 0px;
+  --paper: #ffffff;
+  --ink: #000000;
+  --ink-soft: #333333;
+  --wash: #ececec;
+  --frame: 3px;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --success: oklch(0.723 0.19 149.6);
-  --success-foreground: oklch(0.145 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--paper);
+  --secondary-foreground: var(--ink);
+  --muted: var(--wash);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--wash);
+  --accent-foreground: var(--ink);
+  --destructive: var(--ink);
+  --border: var(--ink);
+  --input: var(--ink);
+  --ring: var(--ink);
+
+  color-scheme: light;
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: "Roboto Flex Variable", system-ui, sans-serif;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -70,31 +60,137 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-wash: var(--wash);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
 
   html {
-    /* Kiosk: no pull-to-refresh, no double-tap zoom, no text selection on taps */
     overscroll-behavior: none;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    font-size: 18px;
+    scrollbar-color: var(--ink) var(--paper);
+    scrollbar-width: auto;
   }
 
   body {
     @apply bg-background text-foreground min-h-dvh antialiased select-none;
+    font-family: var(--font-sans);
+    font-variation-settings: "wdth" 100;
+    font-feature-settings: "tnum" 1;
+    caret-color: var(--ink);
+  }
+
+  ::selection {
+    background: var(--ink);
+    color: var(--paper);
   }
 
   input,
   textarea {
     @apply select-text;
+  }
+
+  /* The browser's blue clear glyph is not part of this world. */
+  input[type="search"]::-webkit-search-cancel-button {
+    appearance: none;
+  }
+
+  :focus-visible {
+    outline: 4px solid var(--ink);
+    outline-offset: 3px;
+  }
+
+  /* On inverted (black) controls the ring must stay visible: draw it in paper, inside the frame. */
+  .bg-ink:focus-visible {
+    outline-color: var(--paper);
+  }
+}
+
+@layer components {
+  /* Condensed heavy caps: the voice of a printed label. */
+  .t-label {
+    font-stretch: 40%;
+    font-variation-settings: "wdth" 40;
+    font-weight: 820;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.05;
+  }
+
+  /* Big tabular numerals: shelf numbers, quantities, UIDs. */
+  .t-num {
+    font-stretch: 55%;
+    font-variation-settings: "wdth" 55;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.9;
+    letter-spacing: -0.01em;
+  }
+
+  .t-small {
+    font-variation-settings: "wdth" 80;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .frame {
+    border: var(--frame) solid var(--ink);
+  }
+
+  .rule {
+    border-top: var(--frame) solid var(--ink);
+  }
+
+  .rule-thin {
+    border-top: 1px solid var(--ink);
+  }
+
+  .hatch-pending {
+    background-image: repeating-linear-gradient(-45deg, var(--ink) 0 2px, transparent 2px 11px);
+  }
+
+  .hatch-attention {
+    background-image:
+      repeating-linear-gradient(-45deg, var(--ink) 0 2px, transparent 2px 11px),
+      repeating-linear-gradient(45deg, var(--ink) 0 2px, transparent 2px 11px);
+  }
+
+  .unavailable {
+    border-style: dashed;
+  }
+}
+
+/* Label feeding out of the printer: the one authored motion. */
+@keyframes label-feed {
+  from {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-12px);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
+  }
+}
+
+.label-feed {
+  animation: label-feed 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label-feed {
+    animation: none;
   }
 }

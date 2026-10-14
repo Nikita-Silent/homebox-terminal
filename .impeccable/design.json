@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-14T00:00:00Z",
+  "title": "Design System: Homebox Terminal",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "primary", "displayName": "Print Black", "canonical": "#000000", "tonalRamp": ["#000000", "#000000", "#000000", "#000000", "#000000", "#000000", "#000000", "#000000"] },
+      "paper": { "role": "neutral", "displayName": "Thermal White", "canonical": "#ffffff", "tonalRamp": ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"] },
+      "ink-soft": { "role": "neutral", "displayName": "Faded Ink", "canonical": "#333333", "tonalRamp": ["#262626", "#333333", "#333333", "#333333", "#333333", "#333333", "#333333", "#333333"] },
+      "wash": { "role": "neutral", "displayName": "Paper Wash", "canonical": "#ececec", "tonalRamp": ["#ececec", "#ececec", "#ececec", "#ececec", "#ececec", "#ececec", "#ececec", "#f5f5f5"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Caps", "purpose": "Screen instruction, item name, shelf name, result headline. Condensed wdth 40, weight 820, uppercase." },
+      "headline": { "displayName": "Headline Caps", "purpose": "Section names, location names in rows, button labels." },
+      "numeral": { "displayName": "Label Numerals", "purpose": "Quantities, step numbers, UIDs. Digits only; never location names." },
+      "body": { "displayName": "Body", "purpose": "Sentences, outcomes, metadata, field values." },
+      "label": { "displayName": "Field Label", "purpose": "Field names inside a ruled cell, unit suffixes, rail status. Never an eyebrow above a heading." }
+    },
+    "shadows": [],
+    "patterns": [
+      { "name": "frame", "value": "border: 3px solid #000", "purpose": "Die-cut frame around every surface." },
+      { "name": "rule", "value": "border-top: 3px solid #000", "purpose": "Partitions a label into cells; 1px for list and definition-grid dividers." },
+      { "name": "hatch-pending", "value": "repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 11px)", "purpose": "Pending state." },
+      { "name": "hatch-attention", "value": "repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 11px), repeating-linear-gradient(45deg, #000 0 2px, transparent 2px 11px)", "purpose": "Needs-attention band, full height of the message, message on a paper chip." },
+      { "name": "unavailable", "value": "border-style: dashed", "purpose": "Unavailable or disabled: the unprinted frame." },
+      { "name": "focus-ring", "value": "outline: 4px solid #000; outline-offset: 3px", "purpose": "Default focus. Buttons: 3px inside the frame (offset -9px). Inverted controls: paper-coloured." }
+    ],
+    "motion": [
+      { "name": "label-feed", "value": "520ms cubic-bezier(0.16, 1, 0.3, 1); clip-path inset(0 0 100% 0) -> inset(0); translateY(-12px) -> 0", "purpose": "The completed-move label feeding out of the printer. The only authored motion; off under prefers-reduced-motion." },
+      { "name": "press", "value": "150ms background-color, color, transform; translateY(1px) on active", "purpose": "Button press inversion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "container", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The screen's main action: an inverted block of print, 64px minimum.",
+      "html": "<button class=\"ds-btn-primary\">ПОДТВЕРДИТЬ</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; height: 64px; padding: 0 28px; background: #000; color: #fff; border: 3px solid #000; border-radius: 0; font-family: 'Roboto Flex Variable', system-ui, sans-serif; font-variation-settings: 'wdth' 40; font-stretch: 40%; font-weight: 820; text-transform: uppercase; letter-spacing: 0.02em; font-size: 22px; cursor: pointer; transition: background-color 150ms, color 150ms, transform 150ms; } .ds-btn-primary:hover { background: #333; } .ds-btn-primary:active { background: #fff; color: #000; transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 3px solid #fff; outline-offset: -9px; } .ds-btn-primary:disabled { background: #fff; color: #333; border-style: dashed; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action: paper block with an ink frame, inverts when pressed.",
+      "html": "<button class=\"ds-btn-outline\">КАМЕРА</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; height: 64px; padding: 0 28px; background: #fff; color: #000; border: 3px solid #000; border-radius: 0; font-family: 'Roboto Flex Variable', system-ui, sans-serif; font-variation-settings: 'wdth' 40; font-stretch: 40%; font-weight: 820; text-transform: uppercase; letter-spacing: 0.02em; font-size: 22px; cursor: pointer; transition: background-color 150ms, color 150ms, transform 150ms; } .ds-btn-outline:hover { background: #ececec; } .ds-btn-outline:active { background: #000; color: #fff; transform: translateY(1px); } .ds-btn-outline:focus-visible { outline: 3px solid #000; outline-offset: -9px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "80px framed search field; focus is a 4px ink ring outside the frame.",
+      "html": "<input class=\"ds-input-search\" type=\"search\" placeholder=\"Название, модель, серийный номер или UID\">",
+      "css": ".ds-input-search { height: 80px; width: 100%; padding: 0 22px; background: #fff; color: #000; border: 3px solid #000; border-radius: 0; font-family: 'Roboto Flex Variable', system-ui, sans-serif; font-size: 27px; font-weight: 600; } .ds-input-search::placeholder { color: #333; font-weight: 400; } .ds-input-search:focus { outline: none; } .ds-input-search:focus-visible { outline: 4px solid #000; outline-offset: 3px; }"
+    },
+    {
+      "name": "App Rail",
+      "kind": "nav",
+      "refersTo": "app-rail",
+      "description": "Sticky black rail with condensed wordmark and paper-framed controls.",
+      "html": "<header class=\"ds-rail\"><a class=\"ds-rail-mark\" href=\"#\">СКЛАД</a><span class=\"ds-rail-status\">СКАНЕР СЛУШАЕТ</span><button class=\"ds-rail-btn\">ВО ВЕСЬ ЭКРАН</button></header>",
+      "css": ".ds-rail { display: flex; align-items: center; gap: 24px; height: 64px; padding: 0 32px; background: #000; color: #fff; font-family: 'Roboto Flex Variable', system-ui, sans-serif; } .ds-rail-mark { color: #fff; text-decoration: none; font-variation-settings: 'wdth' 40; font-weight: 820; font-size: 27px; text-transform: uppercase; } .ds-rail-status { font-variation-settings: 'wdth' 80; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; } .ds-rail-btn { margin-left: auto; height: 48px; padding: 0 18px; background: transparent; color: #fff; border: 3px solid #fff; border-radius: 0; font-family: inherit; font-variation-settings: 'wdth' 40; font-weight: 820; font-size: 18px; text-transform: uppercase; cursor: pointer; } .ds-rail-btn:hover { background: #fff; color: #000; } .ds-rail-btn:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }"
+    },
+    {
+      "name": "Item Row",
+      "kind": "card",
+      "refersTo": "list-row",
+      "description": "Framed result row: caps name, faded metadata, big numeral quantity. Hover washes, pressed inverts.",
+      "html": "<a class=\"ds-row\" href=\"#\"><span class=\"ds-row-name\">ДРЕЛЬ BOSCH</span><span class=\"ds-row-qty\">30<small>ШТ</small></span><span class=\"ds-row-meta\">UID 000-029 · Склад 1</span></a>",
+      "css": ".ds-row { display: grid; grid-template-columns: 1fr auto; column-gap: 24px; row-gap: 4px; align-items: center; padding: 18px 22px; background: #fff; color: #000; border: 3px solid #000; text-decoration: none; font-family: 'Roboto Flex Variable', system-ui, sans-serif; } .ds-row:hover { background: #ececec; } .ds-row:active { background: #000; color: #fff; } .ds-row:active .ds-row-meta { color: #fff; } .ds-row:focus-visible { outline: 4px solid #000; outline-offset: 3px; } .ds-row-name { font-variation-settings: 'wdth' 40; font-weight: 820; text-transform: uppercase; font-size: 30px; line-height: 1.05; } .ds-row-qty { grid-row: span 2; font-variation-settings: 'wdth' 55; font-weight: 900; font-size: 54px; line-height: 0.9; font-variant-numeric: tabular-nums; } .ds-row-qty small { font-size: 14px; font-weight: 600; margin-left: 4px; vertical-align: top; } .ds-row-meta { color: #333; font-size: 18px; font-weight: 500; }"
+    },
+    {
+      "name": "Status Strip",
+      "kind": "custom",
+      "description": "Colourless status: info = frame, error = inverted, pending = diagonal hatch cell, attention = cross-hatch cell.",
+      "html": "<div class=\"ds-status\"><div class=\"ds-status-hatch\"></div><div class=\"ds-status-body\"><p class=\"ds-status-title\">ПРОВЕРЬТЕ ЗАПИСЬ</p><p>Подходящих записей несколько — выберите, к какой добавить.</p></div></div>",
+      "css": ".ds-status { display: flex; background: #fff; color: #000; border: 3px solid #000; font-family: 'Roboto Flex Variable', system-ui, sans-serif; } .ds-status-hatch { width: 24px; flex-shrink: 0; border-right: 3px solid #000; background-image: repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 11px), repeating-linear-gradient(45deg, #000 0 2px, transparent 2px 11px); } .ds-status-body { padding: 22px; font-size: 20px; font-weight: 500; } .ds-status-body p { margin: 0; } .ds-status-title { font-variation-settings: 'wdth' 40; font-weight: 820; font-size: 27px; text-transform: uppercase; }"
+    },
+    {
+      "name": "Printed Label",
+      "kind": "custom",
+      "description": "Signature surface: inverted header band, display-caps name, ruled cells for location and quantity.",
+      "html": "<article class=\"ds-label\"><header class=\"ds-label-band\"><span>ПЕРЕМЕЩЕНО</span><span class=\"ds-num\">UID 000-029</span></header><p class=\"ds-label-name\">ДРЕЛЬ BOSCH</p><div class=\"ds-label-cells\"><div><p class=\"ds-field\">ТЕПЕРЬ ЛЕЖИТ</p><p class=\"ds-label-name\">ПОЛКА 01</p></div><div class=\"ds-label-qty\"><p class=\"ds-field\">В НАЛИЧИИ</p><p class=\"ds-num ds-big\">5</p></div></div></article>",
+      "css": ".ds-label { background: #fff; color: #000; border: 3px solid #000; font-family: 'Roboto Flex Variable', system-ui, sans-serif; } .ds-label-band { display: flex; justify-content: space-between; gap: 16px; padding: 12px 22px; background: #000; color: #fff; font-variation-settings: 'wdth' 40; font-weight: 820; font-size: 27px; text-transform: uppercase; } .ds-label-name { margin: 0; padding: 18px 22px; font-variation-settings: 'wdth' 40; font-weight: 820; font-size: 54px; line-height: 1.05; text-transform: uppercase; } .ds-label-cells { display: grid; grid-template-columns: 1fr auto; border-top: 3px solid #000; } .ds-label-cells .ds-label-name { padding: 4px 0 0; } .ds-label-cells > div { padding: 18px 22px; } .ds-label-qty { border-left: 3px solid #000; } .ds-field { margin: 0; font-variation-settings: 'wdth' 80; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; } .ds-num { font-variation-settings: 'wdth' 55; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 0.9; } .ds-big { margin: 0; font-size: 81px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Printed Warehouse Label",
+    "overview": "Every screen is one bold label read at arm's length on a warehouse floor: white thermal paper, black print, thick die-cut frames, condensed heavy caps and big tabular numerals. The terminal is not an admin panel. It refuses cards, soft shadows and colour; hierarchy comes from type size, frame weight and inversion, never from hue or depth. The confirmed move \"prints\" a fresh label, the one authored motion in the system.\n\nDensity is low and the scale is large. The root font size is 18px, instructions run at 6xl, shelf names at 5-6xl and quantities at 7-8xl, because staff wear gloves and work in harsh or poor light. Every hit target is at least 64px. State is carried by print devices that survive a black-and-white printer: inversion for selected and pressed, a diagonal hatch for pending, a cross-hatch for attention, a dashed frame for unavailable.\n\nLight only. Black-and-white is a strict brand commitment, not a phase.",
+    "keyCharacteristics": [
+      "Two inks: print black on thermal white, plus one soft ink and one wash for secondary text and hover.",
+      "3px square die-cut frames and 3px rules partition every surface; zero radius everywhere.",
+      "Condensed heavy caps (Roboto Flex wdth 40, weight 820) for words; a wider black tabular face (wdth 55, weight 900) for digits only.",
+      "State by inversion, hatch, cross-hatch and dashed frame; never by colour.",
+      "Flat: no shadows, no elevation, no blur.",
+      "64px minimum hit size; gloved-hand ergonomics drive every control."
+    ],
+    "rules": [
+      { "name": "The Two Inks Rule", "body": "There is no hue anywhere in the interface: not for errors, not for success, not for destructive actions, not in photos (item images and the camera feed are rendered grayscale). A destructive action differs from a safe one only by its words and icon.", "section": "colors" },
+      { "name": "The Inversion Rule", "body": "Selected, pressed, error and done states invert: black ground, white print. Inversion is the strongest signal the system has; spend it on the one thing that is chosen or true right now.", "section": "colors" },
+      { "name": "The Hatch Rule", "body": "Pending is a diagonal hatch (2px ink lines every 11px at -45deg). Needs attention is a cross-hatch (the same lines at both -45deg and 45deg). Unavailable is a dashed frame. These three print devices are the whole state vocabulary besides inversion.", "section": "colors" },
+      { "name": "The Digits-Only Numeral Rule", "body": "The wide black numeral face is for digits: quantities, step numbers, UIDs. Shelf and location names, even \"Полка 01\", are words and use the condensed caps face.", "section": "typography" },
+      { "name": "The No-Kicker Rule", "body": "No eyebrow or kicker labels above a heading. The name or instruction leads. The small label face is allowed only as a field name inside a ruled cell, directly attached to its value.", "section": "typography" },
+      { "name": "The Arm's Length Rule", "body": "Minimum hit size is 64px in both dimensions for anything tappable (primary actions are 80-96px tall). Gloves are the design case, not the edge case.", "section": "layout" },
+      { "name": "The Paper Has No Depth Rule", "body": "A label is one sheet. If something needs to stand out, frame it, rule it, or invert it.", "section": "elevation" },
+      { "name": "The Attention Band Rule", "body": "Attention is a cross-hatched band at the full height of the message, with the message set on a paper chip on top of it. Never a small hatched square beside text: at that size it reads as a checkbox.", "section": "components" }
+    ],
+    "dos": [
+      "Do use only Print Black and Thermal White for meaning; reserve Faded Ink for secondary text and Paper Wash for hover.",
+      "Do frame every surface with a 3px square ink border and partition it with 3px rules into labelled cells.",
+      "Do set words in condensed heavy caps and digits in the wide black tabular numeral face.",
+      "Do express state by inversion (selected, pressed, error, done), diagonal hatch (pending), cross-hatch band with a paper chip (attention) and dashed frame (unavailable).",
+      "Do make every tappable target at least 64px; make the primary action 80-96px.",
+      "Do draw the focus ring as a 4px ink outline outside the element; on buttons draw it inside the frame; on inverted controls make it paper.",
+      "Do render photos and the camera feed in grayscale."
+    ],
+    "donts": [
+      "Don't use colour anywhere, including for errors, success or destructive actions.",
+      "Don't use rounded corners, cards with soft shadows, blur or any elevation.",
+      "Don't fill a disabled control with grey or fade it with opacity; print it as a dashed \"unprinted\" frame on paper with faded-ink text.",
+      "Don't set location or shelf names in the numeral face.",
+      "Don't put eyebrow or kicker labels above headings.",
+      "Don't draw attention as a small hatched square next to text.",
+      "Don't add a dark theme; the terminal is light only."
+    ]
+  }
+}

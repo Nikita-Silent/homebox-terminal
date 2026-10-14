@@ -30,6 +30,12 @@ export interface LocationNode {
   children: LocationNode[]
 }
 
+export interface LookupResult {
+  items: ItemSummary[]
+  /** Set when the code is a location label (used to pick the target shelf). */
+  location: LocationRef | null
+}
+
 export interface ItemSearchResult {
   items: ItemSummary[]
   total: number
@@ -82,11 +88,20 @@ export interface TransferResult {
   kind: TransferKind
   quantity: number
   /** The source Item after the transfer. For `whole` it is the moved Item itself. */
-  source: { id: string, name: string, quantity: number, location: LocationRef | null }
+  source: { id: string, name: string, quantity: number, location: LocationRef | null, path: LocationRef[] }
   /** True when the whole quantity was merged into the target and the empty source record was deleted. */
   sourceRemoved: boolean
   /** The Item that received the quantity at the target. */
-  target: { id: string, name: string, quantity: number, location: LocationRef | null } | null
+  target: {
+    id: string
+    /** UID of the record that received the quantity, as printed on its label. */
+    assetId: string
+    name: string
+    quantity: number
+    location: LocationRef | null
+    /** Full location path from the root down to the target location. */
+    path: LocationRef[]
+  } | null
   /** Human-readable reason for `failed` / `needs_attention`. */
   message: string | null
 }

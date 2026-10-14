@@ -183,8 +183,12 @@ export function createTransferService(deps: TransferServiceDeps) {
     const [source, target] = await Promise.all([loadItem(input.itemId), loadLocation(input.targetLocationId)])
     const whole = validate(input, source, target)
     const base = { itemId: source.id, targetLocationId: target.id, quantity: input.quantity }
+    const [itemPath, targetPath] = await Promise.all([homebox.getPath(source.id), locationPath(target)])
     const context: TransferContext = {
       itemName: source.name,
+      itemAssetId: source.assetId,
+      sourcePath: itemPath.filter(p => p.id !== source.id).map(p => ({ id: p.id, name: p.name })),
+      targetPath,
       sourceQuantity: source.quantity,
       sourceLocation: toLocationRef(source.parent),
       targetLocation: { id: target.id, name: target.name },
@@ -209,6 +213,7 @@ export function createTransferService(deps: TransferServiceDeps) {
     }
     context.mergeIntoName = mergeInto.name
     context.mergeIntoQuantity = mergeInto.quantity
+    context.mergeIntoAssetId = mergeInto.assetId
     return { plan: { kind: 'merge', ...base, mergeIntoId: mergeInto.id, removeSource: whole }, context }
   }
 
@@ -332,6 +337,7 @@ export function createTransferService(deps: TransferServiceDeps) {
           if (found.length > 1) throw new NeedsAttention('Найдено несколько копий, созданных этой операцией')
           if (found.length === 1) {
             record.copyId = found[0]!.id
+            record.copyAssetId = found[0]!.assetId
             setStep(record, step, { status: 'done' })
             return
           }
@@ -344,6 +350,7 @@ export function createTransferService(deps: TransferServiceDeps) {
           copyPrefix: copyMarker(record.opId),
         })
         record.copyId = copy.id
+        record.copyAssetId = copy.assetId
         setStep(record, step, { status: 'done' })
         return
       }
@@ -398,21 +405,26 @@ export function createTransferService(deps: TransferServiceDeps) {
       sourceQuantity = steps.removeSource?.after ?? steps.decrementSource?.after ?? sourceQuantity
     }
 
+    const targetPath = context.targetPath ?? [context.targetLocation]
+    const sourcePath = context.sourcePath ?? (context.sourceLocation ? [context.sourceLocation] : [])
+
     let target: TransferResult['target'] = null
     if (done) {
+      const at = { location: context.targetLocation, path: targetPath }
       if (plan.kind === 'whole') {
-        target = { id: plan.itemId, name: context.itemName, quantity: plan.quantity, location: context.targetLocation }
+        target = { id: plan.itemId, assetId: context.itemAssetId ?? '', name: context.itemName, quantity: plan.quantity, ...at }
       }
       else if (plan.kind === 'merge') {
         target = {
           id: plan.mergeIntoId,
+          assetId: context.mergeIntoAssetId ?? '',
           name: context.mergeIntoName ?? context.itemName,
           quantity: steps.incrementTarget?.after ?? (context.mergeIntoQuantity ?? 0) + plan.quantity,
-          location: context.targetLocation,
+          ...at,
         }
       }
       else if (record.copyId) {
-        target = { id: record.copyId, name: context.itemName, quantity: plan.quantity, location: context.targetLocation }
+        target = { id: record.copyId, assetId: record.copyAssetId ?? '', name: context.itemName, quantity: plan.quantity, ...at }
       }
     }
 
@@ -426,6 +438,7 @@ export function createTransferService(deps: TransferServiceDeps) {
         name: context.itemName,
         quantity: sourceQuantity,
         location: plan.kind === 'whole' && done ? context.targetLocation : context.sourceLocation,
+        path: plan.kind === 'whole' && done ? targetPath : sourcePath,
       },
       sourceRemoved,
       target,
