@@ -1,0 +1,20 @@
+# Nuxt
+.nuxt
+.output
+.data
+dist
+
+# Dependencies and in-project caches
+node_modules
+.pnpm-store
+.cache
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Logs / OS
+*.log
+.DS_Store

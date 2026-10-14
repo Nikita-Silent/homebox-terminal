@@ -1,0 +1,8 @@
+{
+  "extends": "../.nuxt/tsconfig.server.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true
+  },
+  "include": ["./steps/**/*.ts", "../server/services/**/*.ts", "../server/homebox/**/*.ts", "../shared/**/*.ts"]
+}

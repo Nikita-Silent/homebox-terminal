@@ -1,0 +1,14 @@
+services:
+  terminal:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      NUXT_JOURNAL_PATH: /data/journal.sqlite
+    volumes:
+      - journal:/data
+
+volumes:
+  journal:

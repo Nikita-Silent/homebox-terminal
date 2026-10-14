@@ -1,0 +1,4 @@
+# Prebuilt binaries ship via optional platform packages; install scripts are not needed.
+allowBuilds:
+  esbuild: false
+  unrs-resolver: false
