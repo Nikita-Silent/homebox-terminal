@@ -139,7 +139,7 @@ onMounted(() => {
       as-child
       variant="outline"
       size="touch"
-      class="h-20 justify-start text-2xl"
+      class="h-auto min-h-20 justify-start py-3 text-left text-xl whitespace-normal sm:text-2xl"
     >
       <NuxtLink to="/browse">
         <List />
