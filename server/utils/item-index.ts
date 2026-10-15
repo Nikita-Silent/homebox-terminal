@@ -44,3 +44,16 @@ export function matchesQuery(item: HbEntitySummary, query: string) {
   const haystack = normalizeSearch(`${item.name} ${item.assetId}`)
   return normalizeSearch(query).split(' ').every(word => haystack.includes(word))
 }
+
+/**
+ * Homebox's asset-id lookup (`/v1/assets/{id}`) returns entities without photo ids;
+ * the item list has them, so they are taken from the local copy.
+ */
+export async function withPhotos<T extends HbEntitySummary>(items: T[]): Promise<T[]> {
+  if (!items.some(item => !item.entityType.isLocation && !item.imageId)) return items
+  const byId = new Map((await getAllItems()).map(item => [item.id, item]))
+  return items.map((item) => {
+    const known = byId.get(item.id)
+    return known?.imageId ? { ...item, imageId: known.imageId, thumbnailId: known.thumbnailId } : item
+  })
+}

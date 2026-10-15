@@ -25,7 +25,7 @@ export default defineTerminalHandler(async (event): Promise<LookupResult> => {
   }
 
   if (parsed.kind === 'asset') {
-    const found = await homebox.getByAssetId(parsed.assetId)
+    const found = await withPhotos(await homebox.getByAssetId(parsed.assetId))
     const location = found.find(e => e.entityType.isLocation)
     return {
       items: found.filter(e => !e.entityType.isLocation).map(toItemSummary),

@@ -13,7 +13,7 @@ export default defineTerminalHandler(async (event): Promise<ItemSearchResult> =>
   const homebox = useHomebox()
 
   const [byAsset, remote, all] = await Promise.all([
-    looksLikeAssetId(q) ? homebox.getByAssetId(q) : Promise.resolve([]),
+    looksLikeAssetId(q) ? homebox.getByAssetId(q).then(withPhotos) : Promise.resolve([]),
     // Homebox search covers model and serial number (ASCII only, see item-index.ts).
     homebox.listItems({ q, pageSize: LIMIT }).then(r => r.items ?? []),
     getAllItems(),
