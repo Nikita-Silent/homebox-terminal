@@ -12,6 +12,38 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      fs: {
+        // Vite's defaults plus local data: the dev server must never hand out the Homebox
+        // database, the journal or scratch files to the network.
+        deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/.data/**', '**/.cache/**', '**/.pnpm-store/**', '*.sqlite*', '*.db*'],
+      },
+    },
+  },
+
+  $production: {
+    routeRules: {
+      '/**': {
+        headers: {
+          'Content-Security-Policy': [
+            'default-src \'self\'',
+            // Nuxt inlines its runtime config; zxing compiles WebAssembly.
+            'script-src \'self\' \'unsafe-inline\' \'wasm-unsafe-eval\'',
+            'style-src \'self\' \'unsafe-inline\'',
+            'img-src \'self\' data: blob:',
+            'media-src \'self\' blob:',
+            'object-src \'none\'',
+            'base-uri \'self\'',
+            'form-action \'self\'',
+            'frame-ancestors \'none\'',
+          ].join('; '),
+          'X-Frame-Options': 'DENY',
+          'X-Content-Type-Options': 'nosniff',
+          'Referrer-Policy': 'no-referrer',
+          'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
+        },
+      },
+    },
   },
 
   shadcn: {
@@ -19,8 +51,10 @@ export default defineNuxtConfig({
     componentDir: './app/components/ui',
   },
 
-  // Server-only settings. Overridden by NUXT_HOMEBOX_BASE_URL, NUXT_HOMEBOX_TOKEN, NUXT_JOURNAL_PATH.
+  // Server-only settings. Overridden by NUXT_HOMEBOX_BASE_URL, NUXT_HOMEBOX_TOKEN, NUXT_JOURNAL_PATH,
+  // NUXT_ALLOWED_HOSTS (comma-separated host[:port] the terminal is opened by; empty = any).
   runtimeConfig: {
+    allowedHosts: '',
     homebox: {
       baseUrl: '',
       token: '',

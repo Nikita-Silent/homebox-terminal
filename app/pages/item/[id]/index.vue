@@ -10,6 +10,7 @@ const apiError = computed(() => (error.value ? toApiError(error.value) : null))
 const shelf = computed(() => item.value?.locationPath.at(-1) ?? null)
 const parents = computed(() => item.value?.locationPath.slice(0, -1) ?? [])
 const notice = ref<string | null>(null)
+const imageFailed = ref(false)
 
 /** Scanning a shelf here jumps straight to the move screen with that shelf chosen. */
 useScanner(async (code) => {
@@ -153,13 +154,14 @@ useScanner(async (code) => {
           </div>
 
           <div
-            v-if="item.hasImage"
+            v-if="item.hasImage && !imageFailed"
             class="border-t-[3px] border-ink lg:w-80 lg:border-t-0 lg:border-l-[3px]"
           >
             <img
               :src="`/api/items/${item.id}/image`"
               :alt="`Фото: ${item.name}`"
               class="aspect-square h-full w-full object-cover grayscale contrast-125"
+              @error="imageFailed = true"
             >
           </div>
         </div>

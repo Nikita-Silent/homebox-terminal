@@ -1,6 +1,8 @@
+import type { H3Event } from 'h3'
 import { z } from 'zod'
 
-const id = z.string().trim().min(1).max(100)
+// Homebox ids are UUIDs. Anything else is rejected before it reaches a Homebox URL.
+const id = z.uuid()
 
 export const TransferPreviewSchema = z.object({
   itemId: id,
@@ -14,3 +16,12 @@ export const TransferSchema = TransferPreviewSchema.extend({
   opId: z.uuid(),
   mergeIntoId: id.nullable(),
 })
+
+const IdParam = z.object({ id: z.uuid() })
+
+/** The `[id]` route parameter, validated as a Homebox UUID. */
+export function getIdParam(event: H3Event): string {
+  return parseWith(IdParam, { id: getRouterParam(event, 'id') }).id
+}
+
+export const OpIdParam = z.object({ opId: z.uuid() })
