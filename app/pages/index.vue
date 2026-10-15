@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ItemSearchResult, ItemSummary } from '#shared/types/terminal'
-import { Camera, Search } from '@lucide/vue'
+import { Camera, List, Search } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,8 +59,8 @@ async function resolveCode(code: string) {
       return
     }
     if (found.location) {
-      notice.value = `Это этикетка локации «${found.location.name}». Сначала отсканируйте оборудование, потом полку.`
-      results.value = null
+      // A shelf label on the start screen: show what lies there.
+      await navigateTo(`/browse/${found.location.id}`)
       return
     }
     query.value = code
@@ -134,6 +134,18 @@ onMounted(() => {
         </Button>
       </div>
     </form>
+
+    <Button
+      as-child
+      variant="outline"
+      size="touch"
+      class="h-20 justify-start text-2xl"
+    >
+      <NuxtLink to="/browse">
+        <List />
+        Не знаю названия — выбрать из списка
+      </NuxtLink>
+    </Button>
 
     <StatusStrip
       v-if="error"

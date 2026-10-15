@@ -36,6 +36,15 @@ export interface LookupResult {
   location: LocationRef | null
 }
 
+/** One level of the location hierarchy, for browsing when the item's name is unknown. */
+export interface LocationContents {
+  location: LocationRef
+  /** Root → this location. */
+  path: LocationRef[]
+  sublocations: LocationRef[]
+  items: ItemSummary[]
+}
+
 export interface ItemSearchResult {
   items: ItemSummary[]
   total: number

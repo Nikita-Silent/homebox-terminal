@@ -198,6 +198,8 @@ Heavy, square and inverting: a button is a punched-out block of print.
 - **Item row:** a framed link with the name in caps (1.5-1.875rem), metadata in faded ink beneath, and the quantity in the numeral face at the right. Hover washes, pressed inverts.
 - **Location tree:** a framed list, rows separated by 1px rules, 64px expand column and 64px-minimum pick rows, indentation per depth. The chosen row inverts with a check; the chosen destination is also repeated in an inverted strip above the tree. The current location cannot be picked: it is drawn unprinted (dashed inner frame, faded ink) with a «Сейчас здесь» caption under the name. Indentation is 0.75rem per level on phones, 1.75rem from sm.
 - **Loading placeholder:** a framed block filled with the diagonal pending hatch, the same mark as a pending operation; never a grey pulse.
+- **Location row:** a framed link for browsing places: warehouse icon, the name in caps (1.5–1.875rem), an optional faded-ink hint («Внутри: 2»), a chevron at the right; 80px minimum, hover washes, pressed inverts. Browse screens list places first («Внутри»), then the items lying directly there.
+- **Letter keys:** square framed caps buttons (56px) that jump the full list; one key per Cyrillic first letter, Latin names share «A–Z», digits «0–9», the rest «#» — never two keys that print the same glyph.
 - **Choice tiles (radio):** framed tiles at least 96px tall; the chosen one inverts and gains a check.
 
 ### Status Strip
