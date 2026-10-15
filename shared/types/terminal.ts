@@ -15,6 +15,8 @@ export interface ItemSummary {
   modelNumber: string
   location: LocationRef | null
   hasImage: boolean
+  /** Changes when the photo is replaced; part of the image URL so caches never show an old photo. */
+  imageId: string | null
 }
 
 export interface ItemDetail extends ItemSummary {

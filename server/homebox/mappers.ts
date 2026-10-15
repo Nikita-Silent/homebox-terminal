@@ -16,6 +16,7 @@ export function toItemSummary(entity: HbEntitySummary | HbEntity): ItemSummary {
     modelNumber: 'modelNumber' in entity ? entity.modelNumber : '',
     location: toLocationRef(entity.parent),
     hasImage: Boolean(entity.imageId),
+    imageId: entity.imageId || null,
   }
 }
 

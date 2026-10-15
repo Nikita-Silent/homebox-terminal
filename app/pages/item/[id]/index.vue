@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ItemDetail } from '#shared/types/terminal'
-import { ArrowLeft, ArrowRightLeft, RefreshCw } from '@lucide/vue'
+import { ArrowLeft, ArrowRightLeft, Expand, RefreshCw, X } from '@lucide/vue'
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
@@ -11,6 +11,10 @@ const shelf = computed(() => item.value?.locationPath.at(-1) ?? null)
 const parents = computed(() => item.value?.locationPath.slice(0, -1) ?? [])
 const notice = ref<string | null>(null)
 const imageFailed = ref(false)
+const photoOpen = ref(false)
+onKeyStroke('Escape', () => {
+  photoOpen.value = false
+})
 
 /** Scanning a shelf here jumps straight to the move screen with that shelf chosen. */
 useScanner(async (code) => {
@@ -157,15 +161,63 @@ useScanner(async (code) => {
             v-if="item.hasImage && !imageFailed"
             class="border-t-[3px] border-ink lg:w-80 lg:border-t-0 lg:border-l-[3px]"
           >
-            <img
-              :src="`/api/items/${item.id}/image`"
-              :alt="`Фото: ${item.name}`"
-              class="aspect-square h-full w-full object-cover grayscale contrast-125"
-              @error="imageFailed = true"
+            <button
+              type="button"
+              class="group relative block h-full w-full"
+              aria-label="Открыть фото во весь экран"
+              @click="photoOpen = true"
             >
+              <ItemPhoto
+                :item="item"
+                size="full"
+                class="aspect-[4/3] h-full w-full bg-wash object-cover lg:aspect-square"
+                @failed="imageFailed = true"
+              />
+              <span class="t-label absolute right-3 bottom-3 flex items-center gap-2 bg-ink px-3 py-2 text-base text-paper group-hover:bg-paper group-hover:text-ink">
+                <Expand
+                  class="size-5"
+                  :stroke-width="2.5"
+                />
+                Увеличить
+              </span>
+            </button>
           </div>
         </div>
       </article>
+
+      <Teleport to="body">
+        <div
+          v-if="photoOpen"
+          class="fixed inset-0 z-50 flex flex-col bg-ink text-paper"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="`Фото: ${item.name}`"
+          @click="photoOpen = false"
+        >
+          <div class="flex items-center gap-4 px-4 py-3 sm:px-8">
+            <p class="t-label min-w-0 flex-1 truncate text-2xl">
+              {{ item.name }}
+            </p>
+            <button
+              type="button"
+              class="t-label flex h-16 items-center gap-2 border-[3px] border-paper px-5 text-xl hover:bg-paper hover:text-ink focus-visible:outline-paper"
+              autofocus
+              @click="photoOpen = false"
+            >
+              <X
+                class="size-6"
+                :stroke-width="2.5"
+              />
+              Закрыть
+            </button>
+          </div>
+          <ItemPhoto
+            :item="item"
+            size="full"
+            class="min-h-0 w-full flex-1 bg-ink object-contain px-4 pb-4 sm:px-8 sm:pb-8"
+          />
+        </div>
+      </Teleport>
 
       <Button
         as-child

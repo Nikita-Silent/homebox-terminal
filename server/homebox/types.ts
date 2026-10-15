@@ -20,6 +20,8 @@ export interface HbEntitySummary {
   quantity: number
   archived: boolean
   imageId?: string
+  /** Homebox makes a ~500px WebP of the primary photo; absent until it is generated. */
+  thumbnailId?: string
   createdAt: string
   updatedAt: string
   entityType: HbEntityType

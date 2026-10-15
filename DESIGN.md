@@ -215,6 +215,15 @@ Heavy, square and inverting: a button is a punched-out block of print.
 ### Employees (admin)
 - A framed «Новый сотрудник» form (name, PIN, role tiles), then one framed row per employee with «Изменить» and «Отключить/Включить». A disabled employee is drawn unprinted (dashed frame, faded name). Editing opens a ruled panel inside the row.
 
+### Photos
+- **Source:** the item's primary photo from Homebox, proxied by the terminal; lists use Homebox's ~500px WebP thumbnail, the card and the viewer the original.
+- **Treatment:** always grayscale with raised contrast, square-cropped (`object-cover`) behind a 3px rule; no rounded corners, no placeholder when an item has no photo — the row simply starts with the name.
+- **Item row:** the thumbnail fills the row's left edge (64px wide on phones, 112px from sm), separated by a 3px rule.
+- **Move header:** the thumbnail sits before the item name (96px, 128px from sm).
+- **Card:** the photo fills the right cell (4:3 on phones, square from lg) with an inverted «Увеличить» chip in the corner; tapping opens the viewer.
+- **Viewer:** full-screen print black, the item name in caps and a paper-framed «Закрыть» (64px); the photo is contained, never cropped. Escape or a tap anywhere closes it.
+- A photo that fails to load (or is not an image) disappears instead of showing a broken image.
+
 ### Status Strip
 A framed strip with a 28px icon, optional caps title and a body message. Info is a plain frame on paper; error inverts. Pending and attention carry a full-height hatched cell (24px wide) on the leading edge, divided by a 3px rule.
 

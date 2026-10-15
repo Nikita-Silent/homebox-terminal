@@ -203,9 +203,16 @@ useScanner(async (code) => {
 
     <template v-else-if="item && tree">
       <header class="frame grid grid-cols-[1fr_auto] overflow-hidden bg-paper">
-        <h1 class="t-label px-5 pt-4 pb-3 text-3xl break-words sm:text-5xl">
-          {{ item.name }}
-        </h1>
+        <div class="flex min-w-0 items-stretch">
+          <ItemPhoto
+            :item="item"
+            decorative
+            class="w-24 shrink-0 border-r-[3px] border-ink bg-wash object-cover sm:w-32"
+          />
+          <h1 class="t-label min-w-0 self-center px-5 pt-4 pb-3 text-3xl break-words sm:text-5xl">
+            {{ item.name }}
+          </h1>
+        </div>
         <p class="t-num border-l-[3px] border-ink px-4 py-4 text-5xl sm:row-span-2 sm:px-5 sm:text-6xl">
           {{ item.quantity }}<span class="t-small ml-1 align-top">шт</span>
         </p>
