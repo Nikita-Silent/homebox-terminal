@@ -224,6 +224,13 @@ Heavy, square and inverting: a button is a punched-out block of print.
 - **Viewer:** full-screen print black, the item name in caps and a paper-framed «Закрыть» (64px); the photo is contained, never cropped. Escape or a tap anywhere closes it.
 - A photo that fails to load (or is not an image) disappears instead of showing a broken image.
 
+### Cart
+- **Rail link:** basket icon, «Корзина» and the count as an inverted numeral chip; shown only while the cart has lines.
+- **Line:** a framed block — thumbnail, name in caps with UID, place and stock in faded ink, a 64–80px remove key behind a 3px rule; under a rule the quantity stepper (quantity-tracked records only), under another the check result: one outcome sentence, an inverted error strip, or the cross-hatched «выберите запись» band with compact framed choice tiles (64px) that invert when chosen. A freshly scanned line is outlined 4px for two seconds.
+- **Target:** the same recent places and location tree as the move screen, under «Куда всё переместить».
+- **Confirmation bar:** fixed at the bottom like the move screen: «N поз. · M шт. → place» in numerals and caps, and one primary «Переместить всё», printed dashed until every line is ready.
+- **After moving:** an inverted «Перемещено: N» header over ruled rows linking to each operation's label; lines that failed stay in the cart.
+
 ### Status Strip
 A framed strip with a 28px icon, optional caps title and a body message. Info is a plain frame on paper; error inverts. Pending and attention carry a full-height hatched cell (24px wide) on the leading edge, divided by a 3px rule.
 

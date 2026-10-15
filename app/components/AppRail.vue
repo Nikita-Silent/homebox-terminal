@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { LogOut, Maximize, Minimize, ScanBarcode, ScrollText, Users } from '@lucide/vue'
+import { LogOut, Maximize, Minimize, ScanBarcode, ScrollText, ShoppingBasket, Users } from '@lucide/vue'
 
 const { isFullscreen, toggle, isSupported } = useFullscreen()
 const { user, signOut } = useAuth()
+const { count: cartCount } = useCart()
 const route = useRoute()
 
 // One framed control (sign out); sections are plain links so the rail stays quiet.
@@ -64,6 +65,20 @@ const navLink = (path: string) => [
       </nav>
 
       <div class="ml-auto flex items-center gap-3">
+        <NuxtLink
+          v-if="user && cartCount"
+          to="/cart"
+          :class="navLink('/cart')"
+          :aria-label="`Корзина: ${cartCount}`"
+          class="gap-2"
+        >
+          <ShoppingBasket
+            class="size-6"
+            :stroke-width="2.5"
+          />
+          <span class="hidden sm:inline">Корзина</span>
+          <span class="t-num bg-paper px-1.5 text-xl text-ink">{{ cartCount }}</span>
+        </NuxtLink>
         <template v-if="user">
           <span class="hidden max-w-56 truncate text-base font-semibold md:inline">{{ user.name }}</span>
           <button

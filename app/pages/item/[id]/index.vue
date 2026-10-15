@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ItemDetail } from '#shared/types/terminal'
-import { ArrowLeft, ArrowRightLeft, Expand, RefreshCw, X } from '@lucide/vue'
+import { ArrowLeft, ArrowRightLeft, Check, Expand, RefreshCw, ShoppingBasket, X } from '@lucide/vue'
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
@@ -11,6 +11,11 @@ const shelf = computed(() => item.value?.locationPath.at(-1) ?? null)
 const parents = computed(() => item.value?.locationPath.slice(0, -1) ?? [])
 const notice = ref<string | null>(null)
 const imageFailed = ref(false)
+const cart = useCart()
+
+function addToCart(value: ItemDetail) {
+  notice.value = cart.add(value) === 'full' ? `В корзине уже ${CART_LIMIT} позиций — сначала переместите их` : null
+}
 const photoOpen = ref(false)
 onKeyStroke('Escape', () => {
   photoOpen.value = false
@@ -219,16 +224,40 @@ useScanner(async (code) => {
         </div>
       </Teleport>
 
-      <Button
-        as-child
-        size="touch"
-        class="h-24 text-3xl"
-      >
-        <NuxtLink :to="`/item/${item.id}/move`">
-          <ArrowRightLeft class="size-8" />
-          Переместить
-        </NuxtLink>
-      </Button>
+      <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <Button
+          as-child
+          size="touch"
+          class="h-24 text-3xl"
+        >
+          <NuxtLink :to="`/item/${item.id}/move`">
+            <ArrowRightLeft class="size-8" />
+            Переместить
+          </NuxtLink>
+        </Button>
+        <Button
+          v-if="!cart.has(item.id)"
+          variant="outline"
+          size="touch"
+          class="h-24 text-2xl sm:min-w-72"
+          @click="addToCart(item)"
+        >
+          <ShoppingBasket class="size-7" />
+          В корзину
+        </Button>
+        <Button
+          v-else
+          as-child
+          variant="outline"
+          size="touch"
+          class="h-24 text-2xl sm:min-w-72"
+        >
+          <NuxtLink to="/cart">
+            <Check class="size-7" />
+            В корзине · открыть
+          </NuxtLink>
+        </Button>
+      </div>
       <p class="text-lg text-ink-soft">
         Можно сразу отсканировать этикетку полки — откроется перемещение на неё.
       </p>
