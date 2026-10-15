@@ -67,7 +67,6 @@ let previewSeq = 0
 async function loadPreview() {
   preview.value = null
   previewError.value = null
-  submitError.value = null
   if (!item.value || !target.value) return
   const seq = ++previewSeq
   previewLoading.value = true
@@ -100,6 +99,10 @@ watch([target, quantity, item], () => {
   opId = null
   debouncedPreview()
 }, { immediate: true })
+// A rejected move refreshes the card (and the preview); its reason must stay until the employee changes the move.
+watch([target, quantity], () => {
+  submitError.value = null
+})
 
 const mergeTarget = computed(() => preview.value?.mergeCandidates.find(c => c.id === mergeIntoId.value) ?? null)
 

@@ -40,14 +40,25 @@ async function search(q: string) {
   }
 }
 
-const debouncedSearch = useDebounceFn(search, 300)
+// Own timer instead of a debounce helper: a scanned code must be able to cancel the pending search.
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+let skipSearch = false
 watch(query, (q) => {
   notice.value = null
-  debouncedSearch(q)
+  clearTimeout(searchTimer)
+  if (skipSearch) {
+    skipSearch = false
+    return
+  }
+  searchTimer = setTimeout(() => search(q), 300)
 })
+onBeforeUnmount(() => clearTimeout(searchTimer))
 
 /** Scanned codes (USB scanner, camera, or Enter in the field) resolve straight to the item. */
 async function resolveCode(code: string) {
+  // The code's own answer wins over a text search typed or scheduled before it.
+  clearTimeout(searchTimer)
+  searchSeq++
   cameraOpen.value = false
   notice.value = null
   error.value = null
@@ -63,6 +74,7 @@ async function resolveCode(code: string) {
       await navigateTo(`/browse/${found.location.id}`)
       return
     }
+    if (query.value !== code) skipSearch = true
     query.value = code
     results.value = found.items
     searched.value = code
