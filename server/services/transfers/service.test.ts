@@ -36,7 +36,6 @@ function failOnce(method: string, when: 'before' | 'after', status = 0, match?: 
   })
 }
 
-
 beforeEach(() => {
   hb = createFakeHomebox()
   hb.addLocation('wh1', 'Склад 1')
@@ -54,7 +53,6 @@ beforeEach(() => {
   journal = createSqliteJournal(':memory:')
   service = createTransferService({ homebox: hb.port, journal })
 })
-
 
 // Business rules (what moves where, when records merge) are specified in logic/features/*.feature.
 // These tests cover API-level guards and saga internals the scenarios don't reach.
@@ -201,3 +199,60 @@ describe('saga failures and recovery', () => {
     expect(hb.get('switches')!.quantity).toBe(2)
   })
 })
+
+describe('journal entries', () => {
+  it('record who moved what, from where, to where and how it ended', async () => {
+    hb.addItem('clips', 'Крокодилы', 'shelf-a', { quantity: 50 })
+    hb.addItem('clips-b', 'Крокодилы', 'shelf-b', { quantity: 10 })
+    const whole = await service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1 }), ACTOR)
+    const split = await service.execute(input(), { id: 'user-2', name: 'Анна' })
+    const merge = await service.execute(input({ itemId: 'clips', quantity: 50, expectedQuantity: 50, mergeIntoId: 'clips-b' }), ACTOR)
+    expect([whole.actor, split.actor]).toEqual([ACTOR, { id: 'user-2', name: 'Анна' }])
+    expect(whole.createdAt).toMatch(/^\d{4}-/)
+
+    const entries = service.listJournal({ from: '2000-01-01T00:00:00Z', to: '2100-01-01T00:00:00Z' })
+    expect(entries.map(e => [e.kind, e.quantity, e.item.name, e.actor?.name, e.status])).toEqual([
+      ['merge', 50, 'Крокодилы', 'Тест', 'done'],
+      ['split', 1, 'D-Link DGS-1005C', 'Анна', 'done'],
+      ['whole', 1, 'TP-Link ER605', 'Тест', 'done'],
+    ])
+    const [m, sp, w] = entries
+    expect(m).toMatchObject({ sourceRemoved: true, target: { id: 'clips-b', quantity: 60 } })
+    expect(sp!.from.map(p => p.name)).toEqual(['Склад 1', 'Полка 01'])
+    expect(sp!.to.map(p => p.name)).toEqual(['Склад 2', 'Полка 01'])
+    expect(sp!.target).toMatchObject({ quantity: 1, assetId: expect.any(String) })
+    expect(w).toMatchObject({ item: { id: 'router' }, target: { id: 'router' }, sourceRemoved: false })
+    expect(merge.target?.id).toBe('clips-b')
+  })
+
+  it('filters by every word of the query over name, UID and place names', async () => {
+    await service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1 }), ACTOR)
+    await service.execute(input(), ACTOR)
+    const search = (q: string) => service.listJournal({ from: '2000-01-01T00:00:00Z', to: '2100-01-01T00:00:00Z', q }).map(e => e.item.name)
+    expect(search('tp-link')).toEqual(['TP-Link ER605'])
+    expect(search('СКЛАД 2   dgs')).toEqual(['D-Link DGS-1005C'])
+    expect(search(hb.get('router')!.assetId)).toEqual(['TP-Link ER605'])
+    expect(search('склад 3')).toEqual([])
+    expect(search('  ')).toHaveLength(2)
+  })
+
+  it('keeps everything when retention is 0 and counts what it purged', async () => {
+    let now = new Date('2020-01-01T00:00:00Z')
+    service = createTransferService({ homebox: hb.port, journal, now: () => now })
+    await service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1 }), ACTOR)
+    now = new Date('2030-01-01T00:00:00Z')
+    expect(service.purgeJournal(0)).toBe(0)
+    expect(service.purgeJournal(5)).toBe(1)
+  })
+
+  it('shows records made before sign-in without an author', async () => {
+    await service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1, opId: 'legacy' }), ACTOR)
+    const stored = journal.get('legacy')!
+    const { actor: _actor, createdAt: _at, ...oldResult } = stored.result!
+    journal.update({ ...stored, actor: undefined, result: oldResult as typeof stored.result })
+    expect(service.getResult('legacy')).toMatchObject({ actor: null, createdAt: stored.createdAt, status: 'done' })
+    expect(service.listJournal({ from: '2000-01-01T00:00:00Z', to: '2100-01-01T00:00:00Z' })[0]!.actor).toBeNull()
+    expect(service.getResult('missing')).toBeNull()
+  })
+})
+

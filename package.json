@@ -12,9 +12,11 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "nuxt typecheck && vue-tsc --noEmit -p logic/tsconfig.json",
+    "typecheck": "nuxt typecheck && vue-tsc --noEmit -p logic/tsconfig.json && vue-tsc --noEmit -p e2e/tsconfig.json",
     "test": "vitest run",
-    "test:logic": "vitest run logic"
+    "test:logic": "vitest run --project logic",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "nuxt build && playwright test"
   },
   "dependencies": {
     "@fontsource-variable/roboto-flex": "5.3.0",
@@ -33,9 +35,15 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "1.17.0",
+    "@nuxt/test-utils": "4.3.3",
+    "@playwright/test": "1.64.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.4",
+    "@vue/test-utils": "2.5.1",
     "eslint": "10.12.0",
+    "h3": "1.15.11",
+    "happy-dom": "21.0.1",
     "quickpickle": "1.11.2",
     "shadcn-nuxt": "2.8.2",
     "tailwindcss": "4.3.3",

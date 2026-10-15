@@ -1,8 +1,9 @@
-// In-memory Homebox used by the transfer service tests. Mirrors the behaviour verified
+// In-memory Homebox used by the transfer service and API tests. Mirrors the behaviour verified
 // against Homebox 0.26.2 (see docs/homebox-api-notes.md), including that PATCH takes
 // absolute quantities and duplicate copies into the source location with a name prefix.
-import type { HbDuplicateOptions, HbEntity, HbEntityList, HbEntityPatch, HbPathItem } from '../../homebox/types'
+import type { HbDuplicateOptions, HbEntity, HbEntityList, HbEntityPatch, HbPathItem, HbTreeItem } from '../../homebox/types'
 import type { HomeboxPort } from './types'
+import type { HomeboxClient } from '../../homebox/client'
 import { HomeboxError } from '../../homebox/client'
 
 type Method = keyof HomeboxPort
@@ -15,6 +16,8 @@ const ITEM_TYPE = { id: 'type-item', name: 'Item', isLocation: false }
 
 export function createFakeHomebox() {
   const entities = new Map<string, HbEntity>()
+  /** `entityId/attachmentId` → file, for the photo proxy. */
+  const attachments = new Map<string, { type: string, body: Uint8Array }>()
   let seq = 0
   let fault: FaultHook | null = null
 
@@ -131,8 +134,45 @@ export function createFakeHomebox() {
     }),
   }
 
+  function tree(parentId: string | null): HbTreeItem[] {
+    return [...entities.values()]
+      .filter(e => e.entityType.isLocation && (e.parent?.id ?? null) === parentId)
+      .map(e => ({ id: e.id, name: e.name, type: 'location', children: tree(e.id) }))
+  }
+
+  /** The full client surface the API handlers use; extra methods are not subject to faults. */
+  const client: HomeboxClient = {
+    ...port,
+    async getByAssetId(assetId: string) {
+      // Like Homebox: «000-011», «000011» and «11» all match; the result carries no photo ids.
+      const wanted = Number(assetId.replace('-', ''))
+      return [...entities.values()]
+        .filter(e => Number(e.assetId.replace('-', '')) === wanted)
+        .map(e => clone({ ...e, imageId: undefined, thumbnailId: undefined }))
+    },
+    async getLocationTree() {
+      return tree(null)
+    },
+    async getAttachment(entityId: string, attachmentId: string) {
+      const file = attachments.get(`${entityId}/${attachmentId}`)
+      if (!file) throw new HomeboxError(404, 'Not Found')
+      return new Response(new Uint8Array(file.body), { headers: { 'content-type': file.type } })
+    },
+  }
+
   return {
     port,
+    client,
+    /** Attaches a primary photo (and optionally a thumbnail) to an entity. */
+    addPhoto(entityId: string, photo: { id: string, type: string, body?: Uint8Array, thumbnail?: { id: string, type: string } }) {
+      const e = mustGet(entityId)
+      e.imageId = photo.id
+      attachments.set(`${entityId}/${photo.id}`, { type: photo.type, body: photo.body ?? new Uint8Array([1, 2, 3]) })
+      if (photo.thumbnail) {
+        e.thumbnailId = photo.thumbnail.id
+        attachments.set(`${entityId}/${photo.thumbnail.id}`, { type: photo.thumbnail.type, body: new Uint8Array([4, 5]) })
+      }
+    },
     addLocation(id: string, name: string, parentId: string | null = null) {
       entities.set(id, blank(id, name, true, parentId))
     },
