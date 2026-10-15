@@ -51,10 +51,19 @@ export default defineNuxtConfig({
     componentDir: './app/components/ui',
   },
 
-  // Server-only settings. Overridden by NUXT_HOMEBOX_BASE_URL, NUXT_HOMEBOX_TOKEN, NUXT_JOURNAL_PATH,
-  // NUXT_ALLOWED_HOSTS (comma-separated host[:port] the terminal is opened by; empty = any).
+  // Server-only settings, overridden by environment variables (see .env.example):
+  // NUXT_HOMEBOX_BASE_URL, NUXT_HOMEBOX_TOKEN, NUXT_JOURNAL_PATH, NUXT_JOURNAL_RETENTION_YEARS,
+  // NUXT_ALLOWED_HOSTS, NUXT_SESSION_IDLE_MINUTES, NUXT_ADMIN_NAME, NUXT_ADMIN_PIN.
   runtimeConfig: {
     allowedHosts: '',
+    journalRetentionYears: 5,
+    session: {
+      idleMinutes: 15,
+    },
+    admin: {
+      name: 'Администратор',
+      pin: '',
+    },
     homebox: {
       baseUrl: '',
       token: '',

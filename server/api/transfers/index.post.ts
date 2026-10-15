@@ -7,7 +7,7 @@ import type { TransferResult } from '../../../shared/types/terminal'
 export default defineTerminalHandler(async (event): Promise<TransferResult> => {
   const input = parseWith(TransferSchema, await readBody(event))
   try {
-    return await useTransferService().execute(input)
+    return await useTransferService().execute(input, requireUser(event))
   }
   finally {
     invalidateItemIndex()

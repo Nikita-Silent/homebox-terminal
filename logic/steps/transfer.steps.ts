@@ -2,7 +2,7 @@
 // против настоящего сервиса перемещений; вместо Homebox — его точная in-memory копия.
 import { After, Before, Given, Then, When } from 'quickpickle'
 import { expect } from 'vitest'
-import type { TransferInput, TransferPreview, TransferResult } from '../../shared/types/terminal'
+import type { Actor, TransferInput, TransferPreview, TransferResult } from '../../shared/types/terminal'
 import type { HbEntity } from '../../server/homebox/types'
 import { HomeboxError } from '../../server/homebox/client'
 import { createFakeHomebox } from '../../server/services/transfers/fake-homebox'
@@ -10,7 +10,11 @@ import { createSqliteJournal } from '../../server/services/transfers/journal'
 import { createTransferService } from '../../server/services/transfers/service'
 import { TransferError } from '../../server/services/transfers/types'
 
-interface World {
+export interface World {
+  /** Scenario clock shared by every service («сегодня …», «прошло N минут»). */
+  now: Date
+  /** Who confirms transfers in phrases that do not name the employee. */
+  actor: Actor
   hb: ReturnType<typeof createFakeHomebox>
   journal: ReturnType<typeof createSqliteJournal>
   service: ReturnType<typeof createTransferService>
@@ -23,13 +27,15 @@ interface World {
   movedId: string | null
 }
 
-const w = (state: unknown) => state as World
+export const w = (state: unknown) => state as World
 
 Before(async (state) => {
   const s = w(state)
+  s.now = new Date('2026-10-15T09:00:00Z')
+  s.actor = { id: 'user:Сотрудник', name: 'Сотрудник' }
   s.hb = createFakeHomebox()
   s.journal = createSqliteJournal(':memory:')
-  s.service = createTransferService({ homebox: s.hb.port, journal: s.journal })
+  s.service = createTransferService({ homebox: s.hb.port, journal: s.journal, now: () => s.now })
   s.seq = 0
   s.preview = null
   s.result = null
@@ -83,9 +89,9 @@ async function run(s: World, fn: () => Promise<TransferResult>) {
 }
 
 /** What the terminal does on «Подтвердить»: preview, take the suggested choice, execute. */
-async function transfer(
+export async function transfer(
   s: World,
-  opts: { quantity: number, name: string, from: string, to: string, seen?: number, separate?: boolean },
+  opts: { quantity: number, name: string, from: string, to: string, seen?: number, separate?: boolean, actor?: Actor },
 ) {
   const source = theRecord(s, opts.name, opts.from)
   ensureShelf(s, opts.to)
@@ -107,7 +113,7 @@ async function transfer(
     }
   }
   s.lastInput = { ...base, opId: newOpId(s), mergeIntoId }
-  await run(s, () => s.service.execute(s.lastInput!))
+  await run(s, () => s.service.execute(s.lastInput!, opts.actor ?? s.actor))
 }
 
 const STATUS: Record<string, TransferResult['status']> = {
@@ -212,7 +218,7 @@ When(
 When('терминал повторно отправляет ту же операцию', async (state) => {
   const s = w(state)
   s.hb.setFault(null)
-  await run(s, () => s.service.execute(s.lastInput!))
+  await run(s, () => s.service.execute(s.lastInput!, s.actor))
 })
 
 When(
@@ -230,8 +236,8 @@ When(
       mergeIntoId: null,
     }
     const outcomes = await Promise.allSettled([
-      s.service.execute({ ...base, opId: newOpId(s) }),
-      s.service.execute({ ...base, opId: newOpId(s) }),
+      s.service.execute({ ...base, opId: newOpId(s) }, s.actor),
+      s.service.execute({ ...base, opId: newOpId(s) }, s.actor),
     ])
     const done = outcomes.filter(o => o.status === 'fulfilled')
     const rejected = outcomes.filter(o => o.status === 'rejected')

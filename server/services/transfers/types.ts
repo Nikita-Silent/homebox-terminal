@@ -1,5 +1,6 @@
 import type { HomeboxClient } from '../../homebox/client'
 import type {
+  Actor,
   LocationRef,
   TerminalErrorCode,
   TransferInput,
@@ -65,6 +66,8 @@ export interface TransferContext {
 export interface TransferRecord {
   opId: string
   status: TransferStatus
+  /** Who confirmed the transfer. Absent in records made before sign-in existed. */
+  actor?: Actor | null
   input: TransferInput
   plan: TransferPlan
   context: TransferContext
@@ -85,6 +88,10 @@ export interface TransferJournal {
   insert: (record: TransferRecord) => boolean
   update: (record: TransferRecord) => void
   listByStatus: (status: TransferStatus) => TransferRecord[]
+  /** Records created in [from, to), newest first. */
+  listBetween: (from: string, to: string, actorId?: string) => TransferRecord[]
+  /** Deletes finished records created before `before`; returns how many. */
+  deleteBefore: (before: string) => number
 }
 
 export class TransferError extends Error {

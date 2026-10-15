@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [quickpickle()],
   test: {
     include: ['server/**/*.test.ts', 'shared/**/*.test.ts', 'logic/features/**/*.feature'],
-    setupFiles: ['logic/steps/transfer.steps.ts'],
+    setupFiles: ['logic/steps/transfer.steps.ts', 'logic/steps/auth.steps.ts'],
     environment: 'node',
   },
 })

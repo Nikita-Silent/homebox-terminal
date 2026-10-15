@@ -94,6 +94,9 @@ export type TransferStatus = 'pending' | 'done' | 'failed' | 'needs_attention'
 export interface TransferResult {
   opId: string
   status: TransferStatus
+  /** Who confirmed the transfer; `null` for operations recorded before sign-in existed. */
+  actor: Actor | null
+  createdAt: string
   kind: TransferKind
   quantity: number
   /** The source Item after the transfer. For `whole` it is the moved Item itself. */
@@ -115,6 +118,79 @@ export interface TransferResult {
   message: string | null
 }
 
+/** Who performed an operation, as recorded at that moment (names may change later). */
+export interface Actor {
+  id: string
+  name: string
+}
+
+export type UserRole = 'admin' | 'staff'
+
+/** The signed-in employee. */
+export interface SessionUser extends Actor {
+  role: UserRole
+  /** The terminal signs out after this much inactivity. */
+  idleMinutes: number
+}
+
+/** An employee as the admin page shows them. */
+export interface UserAccount extends Actor {
+  role: UserRole
+  active: boolean
+  createdAt: string
+}
+
+export interface UserCreateInput {
+  name: string
+  pin: string
+  role: UserRole
+}
+
+export interface UserUpdateInput {
+  name?: string
+  pin?: string
+  role?: UserRole
+  active?: boolean
+}
+
+/** One transfer in the report: when, who, what, how many, from where, to where. */
+export interface JournalEntry {
+  opId: string
+  createdAt: string
+  /** `null` for operations recorded before sign-in existed. */
+  actor: Actor | null
+  status: TransferStatus
+  kind: TransferKind
+  quantity: number
+  item: { id: string, name: string, assetId: string }
+  /** Root → location the item was taken from. */
+  from: LocationRef[]
+  /** Root → location the item was put to. */
+  to: LocationRef[]
+  /** The record that holds the moved quantity at the target (the same item, a merge target, or a new copy). */
+  target: { id: string, name: string, assetId: string, quantity: number } | null
+  sourceRemoved: boolean
+  message: string | null
+}
+
+export interface JournalFilter {
+  /** ISO instants, `from` inclusive and `to` exclusive. */
+  from: string
+  to: string
+  userId?: string
+  /** Matches item name, UID and location names. */
+  q?: string
+}
+
+export interface JournalPage {
+  entries: JournalEntry[]
+  /** Totals over the whole filter, not only this page. */
+  total: number
+  totalQuantity: number
+  /** Everyone who can appear in the filter, including disabled employees. */
+  actors: Actor[]
+}
+
 /** Stable error codes returned by the BFF (in `data.code` of the error response). */
 export type TerminalErrorCode
   = | 'HOMEBOX_UNAVAILABLE'
@@ -124,4 +200,8 @@ export type TerminalErrorCode
     | 'STALE'
     | 'BUSY'
     | 'OP_CONFLICT'
+    | 'UNAUTHENTICATED'
+    | 'FORBIDDEN'
+    | 'WRONG_PIN'
+    | 'LOCKED'
     | 'INTERNAL'

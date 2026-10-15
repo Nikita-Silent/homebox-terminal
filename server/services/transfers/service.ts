@@ -1,5 +1,8 @@
 import type { HbEntity } from '../../homebox/types'
 import type {
+  Actor,
+  JournalEntry,
+  JournalFilter,
   LocationRef,
   TransferInput,
   TransferKind,
@@ -51,6 +54,10 @@ export function isSameProduct(a: HbEntity, b: HbEntity) {
     return norm(a.modelNumber) === norm(b.modelNumber) && norm(a.manufacturer) === norm(b.manufacturer)
   }
   return !norm(b.modelNumber) && a.name.trim() === b.name.trim()
+}
+
+function normalize(text: string) {
+  return text.toLocaleLowerCase('ru').replaceAll('ё', 'е').replace(/\s+/g, ' ').trim()
 }
 
 /** Raised inside the saga when it cannot safely decide how to continue. */
@@ -431,6 +438,8 @@ export function createTransferService(deps: TransferServiceDeps) {
     return {
       opId: record.opId,
       status: record.status,
+      actor: record.actor ?? null,
+      createdAt: record.createdAt,
       kind: plan.kind,
       quantity: plan.quantity,
       source: {
@@ -489,7 +498,7 @@ export function createTransferService(deps: TransferServiceDeps) {
     return record.result
   }
 
-  async function execute(input: TransferInput): Promise<TransferResult> {
+  async function execute(input: TransferInput, actor: Actor): Promise<TransferResult> {
     return withLocks([`op:${input.opId}`], async () => {
       const existing = journal.get(input.opId)
       if (existing) {
@@ -507,6 +516,7 @@ export function createTransferService(deps: TransferServiceDeps) {
         const record: TransferRecord = {
           opId: input.opId,
           status: 'pending',
+          actor: { id: actor.id, name: actor.name },
           input,
           plan: accepted,
           context,
@@ -528,7 +538,9 @@ export function createTransferService(deps: TransferServiceDeps) {
 
   function getResult(opId: string): TransferResult | null {
     const record = journal.get(opId)
-    return record ? record.result ?? toResult(record) : null
+    if (!record) return null
+    // Results stored before sign-in existed lack who/when.
+    return record.result ? { ...record.result, actor: record.actor ?? null, createdAt: record.createdAt } : toResult(record)
   }
 
   /** Finishes operations interrupted by a crash or a Homebox outage. */
@@ -544,5 +556,52 @@ export function createTransferService(deps: TransferServiceDeps) {
     return results
   }
 
-  return { preview, execute, getResult, resumePending, findMergeCandidates }
+  function toEntry(record: TransferRecord): JournalEntry {
+    const result = record.result ?? toResult(record)
+    const { context, plan } = record
+    return {
+      opId: record.opId,
+      createdAt: record.createdAt,
+      actor: record.actor ?? null,
+      status: record.status,
+      kind: plan.kind,
+      quantity: plan.quantity,
+      item: { id: plan.itemId, name: context.itemName, assetId: context.itemAssetId ?? '' },
+      from: context.sourcePath ?? (context.sourceLocation ? [context.sourceLocation] : []),
+      to: context.targetPath ?? [context.targetLocation],
+      target: result.target
+        ? { id: result.target.id, name: result.target.name, assetId: result.target.assetId, quantity: result.target.quantity }
+        : null,
+      sourceRemoved: result.sourceRemoved,
+      message: record.message,
+    }
+  }
+
+  /** The transfer report: every operation in the period, newest first. */
+  function listJournal(filter: JournalFilter): JournalEntry[] {
+    const entries = journal.listBetween(filter.from, filter.to, filter.userId).map(toEntry)
+    const words = normalize(filter.q ?? '').split(' ').filter(Boolean)
+    if (!words.length) return entries
+    return entries.filter((entry) => {
+      const text = normalize([
+        entry.item.name,
+        entry.item.assetId,
+        entry.target?.assetId ?? '',
+        ...entry.from.map(p => p.name),
+        ...entry.to.map(p => p.name),
+      ].join(' '))
+      return words.every(word => text.includes(word))
+    })
+  }
+
+  /** Forgets finished operations older than `years` (0 keeps everything). Returns how many were deleted. */
+  function purgeJournal(years: number) {
+    if (!(years > 0)) return 0
+    const cutoff = deps.now?.() ?? new Date()
+    const before = new Date(cutoff)
+    before.setUTCFullYear(before.getUTCFullYear() - years)
+    return journal.deleteBefore(before.toISOString())
+  }
+
+  return { preview, execute, getResult, resumePending, findMergeCandidates, listJournal, purgeJournal }
 }

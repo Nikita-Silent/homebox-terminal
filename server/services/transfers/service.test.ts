@@ -10,6 +10,8 @@ let journal: ReturnType<typeof createSqliteJournal>
 let service: ReturnType<typeof createTransferService>
 let opCounter = 0
 
+const ACTOR = { id: 'user-1', name: 'Тест' }
+
 function input(overrides: Partial<TransferInput> = {}): TransferInput {
   return {
     opId: `op-${++opCounter}`,
@@ -66,20 +68,20 @@ describe('API guards', () => {
     [{ itemId: 'missing' }, 'NOT_FOUND'],
     [{ expectedLocationId: 'shelf-b' }, 'STALE'],
   ] as const)('rejects %o with %s and changes nothing', async (overrides, code) => {
-    await expect(service.execute(input(overrides))).rejects.toMatchObject({ code })
+    await expect(service.execute(input(overrides), ACTOR)).rejects.toMatchObject({ code })
     expect(hb.get('switches')).toMatchObject({ quantity: 3, parent: { id: 'shelf-a' } })
     expect(hb.items()).toHaveLength(2)
   })
 
   it('rejects a partial transfer of a fractional quantity', async () => {
     hb.get('switches')!.quantity = 2.5
-    await expect(service.execute(input({ expectedQuantity: 2.5 }))).rejects.toMatchObject({ code: 'VALIDATION' })
+    await expect(service.execute(input({ expectedQuantity: 2.5 }), ACTOR)).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
   it('rejects a forced merge into a different product', async () => {
     hb.addItem('other', 'D-Link DGS-1008A', 'shelf-b', { quantity: 5, manufacturer: 'D-Link', modelNumber: 'DGS-1008A' })
 
-    await expect(service.execute(input({ mergeIntoId: 'other' }))).rejects.toMatchObject({ code: 'VALIDATION' })
+    await expect(service.execute(input({ mergeIntoId: 'other' }), ACTOR)).rejects.toMatchObject({ code: 'VALIDATION' })
     expect(hb.get('other')!.quantity).toBe(5)
   })
 
@@ -87,8 +89,8 @@ describe('API guards', () => {
     hb.addItem('single', 'D-Link DGS-1005C', 'shelf-b', { quantity: 1, manufacturer: 'D-Link', modelNumber: 'DGS-1005C' })
     hb.addItem('many', 'TP-Link ER605', 'shelf-b', { quantity: 4, manufacturer: 'TP-Link', modelNumber: 'ER605' })
 
-    await expect(service.execute(input({ mergeIntoId: 'single' }))).rejects.toMatchObject({ code: 'VALIDATION' })
-    await expect(service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1, mergeIntoId: 'many' })))
+    await expect(service.execute(input({ mergeIntoId: 'single' }), ACTOR)).rejects.toMatchObject({ code: 'VALIDATION' })
+    await expect(service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1, mergeIntoId: 'many' }), ACTOR))
       .rejects.toMatchObject({ code: 'VALIDATION' })
     expect(hb.get('single')!.quantity).toBe(1)
     expect(hb.get('many')!.quantity).toBe(4)
@@ -97,7 +99,7 @@ describe('API guards', () => {
   it('moves a whole quantity record itself when no merge is requested', async () => {
     hb.addItem('clips', 'Крокодилы', 'shelf-a', { quantity: 50 })
     hb.addItem('clips-b', 'Крокодилы', 'shelf-b', { quantity: 25 })
-    const result = await service.execute(input({ itemId: 'clips', quantity: 50, expectedQuantity: 50 }))
+    const result = await service.execute(input({ itemId: 'clips', quantity: 50, expectedQuantity: 50 }), ACTOR)
 
     expect(result).toMatchObject({ kind: 'whole', sourceRemoved: false })
     expect(hb.get('clips')).toMatchObject({ quantity: 50, parent: { id: 'shelf-b' } })
@@ -114,7 +116,7 @@ describe('API guards', () => {
 describe('idempotency', () => {
   it('runs concurrent duplicates of one request only once', async () => {
     const request = input()
-    const results = await Promise.all([service.execute(request), service.execute(request), service.execute(request)])
+    const results = await Promise.all([service.execute(request, ACTOR), service.execute(request, ACTOR), service.execute(request, ACTOR)])
 
     expect(new Set(results.map(r => r.target!.id)).size).toBe(1)
     expect(hb.get('switches')!.quantity).toBe(2)
@@ -123,9 +125,9 @@ describe('idempotency', () => {
 
   it('rejects a reused opId with different parameters', async () => {
     const request = input()
-    await service.execute(request)
+    await service.execute(request, ACTOR)
 
-    await expect(service.execute({ ...request, quantity: 2, expectedQuantity: 2 }))
+    await expect(service.execute({ ...request, quantity: 2, expectedQuantity: 2 }, ACTOR))
       .rejects.toMatchObject({ code: 'OP_CONFLICT' })
   })
 })
@@ -138,7 +140,7 @@ describe('saga failures and recovery', () => {
     hb.setFault((m, args, w) => {
       if (m === 'getEntity' && args[0] === 'switches-b' && w === 'before' && ++reads === 2) throw new HomeboxError(0, 'down')
     })
-    const result = await service.execute(input({ mergeIntoId: 'switches-b' }))
+    const result = await service.execute(input({ mergeIntoId: 'switches-b' }), ACTOR)
 
     expect(result.status).toBe('failed')
     expect(hb.get('switches')!.quantity).toBe(3)
@@ -147,7 +149,7 @@ describe('saga failures and recovery', () => {
 
   it('fails cleanly when Homebox rejects the first write', async () => {
     failOnce('patchEntity', 'before', 400)
-    const result = await service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1 }))
+    const result = await service.execute(input({ itemId: 'router', quantity: 1, expectedQuantity: 1 }), ACTOR)
 
     expect(result.status).toBe('failed')
     expect(hb.get('router')!.parent!.id).toBe('shelf-a')
@@ -157,9 +159,9 @@ describe('saga failures and recovery', () => {
     // Network error on duplicate: Homebox may or may not have created the copy.
     failOnce('duplicateEntity', 'before')
     const request = input()
-    expect((await service.execute(request)).status).toBe('pending')
+    expect((await service.execute(request, ACTOR)).status).toBe('pending')
 
-    expect((await service.execute(request)).status).toBe('done')
+    expect((await service.execute(request, ACTOR)).status).toBe('done')
     expect(hb.items()).toHaveLength(3)
     expect(hb.get('switches')!.quantity).toBe(2)
   })
@@ -167,10 +169,10 @@ describe('saga failures and recovery', () => {
   it('finishes a split interrupted before the rename', async () => {
     failOnce('renameEntity', 'before')
     const request = input()
-    expect((await service.execute(request)).status).toBe('pending')
+    expect((await service.execute(request, ACTOR)).status).toBe('pending')
     expect(hb.items().some(i => i.name.startsWith(copyMarker(request.opId)))).toBe(true)
 
-    expect((await service.execute(request)).status).toBe('done')
+    expect((await service.execute(request, ACTOR)).status).toBe('done')
     expect(hb.items().map(i => i.name)).not.toContainEqual(expect.stringContaining('[hbt:'))
   })
 
@@ -179,10 +181,10 @@ describe('saga failures and recovery', () => {
     hb.addItem('clips-b', 'Крокодилы', 'shelf-b', { quantity: 25 })
     failOnce('patchEntity', 'after', 0, ([p]) => (p as { id: string }).id === 'clips-b')
     const request = input({ itemId: 'clips', quantity: 50, expectedQuantity: 50, mergeIntoId: 'clips-b' })
-    expect((await service.execute(request)).status).toBe('pending')
+    expect((await service.execute(request, ACTOR)).status).toBe('pending')
     hb.get('clips')!.quantity = 53 // someone added 3 in Homebox before the saga resumed
 
-    const result = await service.execute(request)
+    const result = await service.execute(request, ACTOR)
     expect(result).toMatchObject({ status: 'done', sourceRemoved: false, source: { quantity: 3 } })
     expect(hb.get('clips')!.quantity).toBe(3)
     expect(hb.get('clips-b')!.quantity).toBe(75)
@@ -191,7 +193,7 @@ describe('saga failures and recovery', () => {
   it('keeps the journal across service restarts', async () => {
     failOnce('patchEntity', 'before', 503, ([p]) => (p as { id: string }).id === 'switches')
     const request = input()
-    await service.execute(request)
+    await service.execute(request, ACTOR)
 
     const restarted = createTransferService({ homebox: hb.port, journal })
     const [result] = await restarted.resumePending()

@@ -42,6 +42,13 @@ useScanner(async (code) => {
   }
 })
 
+const stamp = computed(() => {
+  if (!result.value) return ''
+  const when = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+    .format(new Date(result.value.createdAt))
+  return result.value.actor ? `${result.value.actor.name} · ${when}` : when
+})
+
 const headline = computed(() => {
   switch (result.value?.status) {
     case 'done': return 'Перемещено'
@@ -175,6 +182,13 @@ const headline = computed(() => {
             Можно продолжать работу: экран обновится сам.
           </p>
         </div>
+
+        <p
+          v-if="stamp"
+          class="rule-thin px-5 py-2 text-base font-semibold"
+        >
+          Сотрудник: {{ stamp }}
+        </p>
       </article>
 
       <div class="grid gap-3 sm:grid-cols-[1fr_auto]">

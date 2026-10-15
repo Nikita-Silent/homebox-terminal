@@ -12,6 +12,10 @@ const STATUS_BY_CODE: Record<TerminalErrorCode, number> = {
   STALE: 409,
   BUSY: 409,
   OP_CONFLICT: 409,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  WRONG_PIN: 422,
+  LOCKED: 429,
   INTERNAL: 500,
 }
 

@@ -202,13 +202,26 @@ Heavy, square and inverting: a button is a punched-out block of print.
 - **Letter keys:** square framed caps buttons (56px) that jump the full list; one key per Cyrillic first letter, Latin names share «A–Z», digits «0–9», the rest «#» — never two keys that print the same glyph.
 - **Choice tiles (radio):** framed tiles at least 96px tall; the chosen one inverts and gains a check.
 
+### Sign-in
+- **Name tiles:** framed buttons at least 96px tall, person icon and the name in caps (1.5–1.875rem), two or three per row. Disabled employees are not listed.
+- **PIN keypad:** a 3×4 grid of framed numeral keys (80px, 96px from sm) — digits, erase, and the inverted confirm key with a check; confirm stays an unprinted dashed key until 4 digits are entered. Entered digits print as filled 24px squares, empty places as open squares; never the digits themselves. On lg the name card sits left and the keypad right, so the whole form fits a 900px-high screen.
+
+### Journal (admin)
+- **Period keys:** framed caps buttons (56px) in a radio group; the chosen one inverts. «Период» reveals two framed date fields.
+- **Totals strip:** one frame split by a 3px rule into «Операций» and «Перемещено» numerals.
+- **Day heading:** the local date in caps above that day's entries.
+- **Entry row:** a framed link in three ruled cells — time numeral with the employee's name under it; item name in caps with UID, the route «from → to» and the outcome line; the quantity numeral. An unfinished entry carries the same hatch chip as its status. Phones stack the cells.
+
+### Employees (admin)
+- A framed «Новый сотрудник» form (name, PIN, role tiles), then one framed row per employee with «Изменить» and «Отключить/Включить». A disabled employee is drawn unprinted (dashed frame, faded name). Editing opens a ruled panel inside the row.
+
 ### Status Strip
 A framed strip with a 28px icon, optional caps title and a body message. Info is a plain frame on paper; error inverts. Pending and attention carry a full-height hatched cell (24px wide) on the leading edge, divided by a 3px rule.
 
 **The Attention Band Rule.** Attention is a cross-hatched band at the full height of the message, with the message set on a paper chip on top of it. Never a small hatched square beside text: at that size it reads as a checkbox.
 
 ### Navigation
-- **App rail:** black, 64px tall, sticky. The wordmark is condensed caps at 1.5rem; the scanner status is in the small label face. Rail controls are paper-framed (3px) on black, invert to paper on hover, and use a paper focus ring.
+- **App rail:** black, 64px tall, sticky. The wordmark is condensed caps at 1.5rem; the scanner status is in the small label face. Rail controls are paper-framed (3px) on black, invert to paper on hover, and use a paper focus ring. Signed in, the rail stays quiet: admins get two plain caps links «Журнал» and «Сотрудники» (the current one underlined 3px); the employee's name is plain text at the right, followed by the one framed control, «Выйти». Fullscreen is an icon-only 48px square that shows a frame only on hover. Staff see no sections at all. Below sm the section links become icons (the current one gets a 3px paper bar under it), «Выйти» keeps only its icon and fullscreen hides; below md the name hides.
 - **Back links:** caps text with a left arrow; hover adds a 3px underline.
 
 ### The Printed Label (signature)
