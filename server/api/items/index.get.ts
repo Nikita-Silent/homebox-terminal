@@ -7,22 +7,17 @@ const LIMIT = 50
 
 const Query = z.object({ q: z.string().trim().min(1).max(200) })
 
-/** Search by name, model, serial number or asset id (UID). */
+/** Search by name, model, serial number or asset id (UID), through Homebox's own search. */
 export default defineTerminalHandler(async (event): Promise<ItemSearchResult> => {
   const { q } = parseWith(Query, getQuery(event))
-  const homebox = useHomebox()
-
-  const [byAsset, remote, all] = await Promise.all([
-    looksLikeAssetId(q) ? homebox.getByAssetId(q).then(withPhotos) : Promise.resolve([]),
-    // Homebox search covers model and serial number (ASCII only, see item-index.ts).
-    homebox.listItems({ q, pageSize: LIMIT }).then(r => r.items ?? []),
-    getAllItems(),
+  const [byAsset, found] = await Promise.all([
+    looksLikeAssetId(q) ? useHomebox().getByAssetId(q).then(withPhotos) : Promise.resolve([]),
+    useHomebox().listItems({ q, pageSize: LIMIT }).then(r => r.items ?? []),
   ])
-  const local = all.filter(item => matchesQuery(item, q))
 
   const seen = new Set<string>()
   const merged: HbEntitySummary[] = []
-  for (const item of [...byAsset, ...local, ...remote]) {
+  for (const item of [...byAsset, ...found]) {
     if (item.entityType.isLocation || item.archived || seen.has(item.id)) continue
     seen.add(item.id)
     merged.push(item)

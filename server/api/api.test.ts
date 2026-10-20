@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TestServer } from '../test/nitro'
 import { createTestServer, HOST } from '../test/nitro'
 
@@ -10,13 +10,24 @@ beforeEach(async () => {
   s = await createTestServer()
   ;({ admin, staff } = await s.withPeople())
 })
-afterEach(() => s.close())
+afterEach(() => {
+  s.close()
+  vi.restoreAllMocks()
+})
 
 const json = { 'content-type': 'application/json' }
 
 describe('health', () => {
-  it('is public and says whether Homebox is configured', async () => {
-    expect((await s.request('GET', '/api/health')).body).toEqual({ ok: true, homeboxConfigured: true })
+  it('is public and says whether Homebox is configured, its version and whether it is tested', async () => {
+    expect((await s.request('GET', '/api/health')).body).toEqual({
+      ok: true, homeboxConfigured: true, homeboxVersion: '0.27.0', homeboxTested: true,
+    })
+  })
+
+  it('flags a Homebox version the terminal was not checked against', async () => {
+    s.hb.setVersion('v0.28.0')
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect((await s.request('GET', '/api/health')).body).toMatchObject({ homeboxVersion: '0.28.0', homeboxTested: false })
   })
 })
 
@@ -139,11 +150,18 @@ describe('request guards', () => {
 })
 
 describe('items', () => {
-  it('finds Cyrillic names that Homebox search misses, and Latin model numbers', async () => {
+  it('searches names, makers and model numbers through Homebox, without loading the whole list', async () => {
+    const listed: unknown[] = []
+    s.hb.setFault((method, args, when) => {
+      if (method === 'listItems' && when === 'before') listed.push(args[0])
+    })
     const byName = await s.request('GET', '/api/items', { cookie: staff, query: { q: 'кроко' } })
     expect(byName.body.items.map((i: { name: string }) => i.name)).toEqual(['Крокодилы'])
-    const byModel = await s.request('GET', '/api/items', { cookie: staff, query: { q: 'dgs' } })
-    expect(byModel.body).toMatchObject({ total: 1, items: [{ name: 'D-Link DGS-1005C', location: { name: 'Полка 01' } }] })
+    const byMaker = await s.request('GET', '/api/items', { cookie: staff, query: { q: 'd-link dgs' } })
+    expect(byMaker.body).toMatchObject({ total: 1, items: [{ name: 'D-Link DGS-1005C', location: { name: 'Полка 01' } }] })
+    const scanned = await s.request('GET', '/api/items/lookup', { cookie: staff, query: { code: 'КРОКОДИЛЫ' } })
+    expect(scanned.body.items.map((i: { name: string }) => i.name)).toEqual(['Крокодилы'])
+    expect(listed).toEqual([{ q: 'кроко', pageSize: 50 }, { q: 'd-link dgs', pageSize: 50 }, { q: 'КРОКОДИЛЫ', pageSize: 30 }])
   })
 
   it('finds by UID with the photo id the asset lookup lacks', async () => {

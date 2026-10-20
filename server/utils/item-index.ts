@@ -1,11 +1,6 @@
 import type { HbEntitySummary } from '../homebox/types'
 
-/**
- * Homebox 0.26.x search does not match Cyrillic text (it lower-cases the query in Go but the
- * column with SQLite's ASCII-only lower()), so names are searched in a short-lived local copy
- * of the item list. ~1000 items fit in one request. 0.27.0 fixed its search; the copy stays so
- * the terminal works with either version.
- */
+/** A short-lived copy of the whole item list, for the full list screen. ~1000 items fit in one request. */
 const MAX_AGE_MS = 30_000
 const PAGE_SIZE = 1000
 
@@ -36,25 +31,15 @@ export function invalidateItemIndex() {
   cache = null
 }
 
-export function normalizeSearch(text: string) {
-  return text.toLocaleLowerCase('ru').replaceAll('ё', 'е').replace(/\s+/g, ' ').trim()
-}
-
-/** Every word of the query must appear in the name or the asset id. */
-export function matchesQuery(item: HbEntitySummary, query: string) {
-  const haystack = normalizeSearch(`${item.name} ${item.assetId}`)
-  return normalizeSearch(query).split(' ').every(word => haystack.includes(word))
-}
-
 /**
  * Homebox's asset-id lookup (`/v1/assets/{id}`) returns entities without photo ids;
- * the item list has them, so they are taken from the local copy.
+ * the item card has them. A UID matches one record, so this is a request or two.
  */
 export async function withPhotos<T extends HbEntitySummary>(items: T[]): Promise<T[]> {
-  if (!items.some(item => !item.entityType.isLocation && !item.imageId)) return items
-  const byId = new Map((await getAllItems()).map(item => [item.id, item]))
-  return items.map((item) => {
-    const known = byId.get(item.id)
-    return known?.imageId ? { ...item, imageId: known.imageId, thumbnailId: known.thumbnailId } : item
-  })
+  const homebox = useHomebox()
+  return Promise.all(items.map(async (item) => {
+    if (item.entityType.isLocation || item.imageId) return item
+    const { imageId, thumbnailId } = await homebox.getEntity(item.id)
+    return imageId ? { ...item, imageId, thumbnailId } : item
+  }))
 }

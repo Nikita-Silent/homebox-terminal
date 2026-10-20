@@ -63,6 +63,7 @@ export async function installNitroGlobals() {
     import('../utils/transfer-schema'),
     import('../utils/lookup'),
     import('../utils/item-index'),
+    import('../utils/homebox-version'),
     import('../utils/auth'),
   ])
   for (const mod of modules) {
@@ -147,6 +148,8 @@ export async function createTestServer(config: Partial<TestConfig> = {}) {
   current.auth = auth
   const { invalidateItemIndex } = await import('../utils/item-index')
   invalidateItemIndex()
+  const { resetHomeboxVersion } = await import('../utils/homebox-version')
+  resetHomeboxVersion()
 
   const app = h3.createApp()
   app.use((await import('../middleware/01.security')).default)

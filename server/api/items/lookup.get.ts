@@ -33,11 +33,6 @@ export default defineTerminalHandler(async (event): Promise<LookupResult> => {
     }
   }
 
-  const [remote, all] = await Promise.all([
-    homebox.listItems({ q: parsed.text, pageSize: 30 }).then(r => r.items ?? []),
-    getAllItems(),
-  ])
-  const ids = new Set(remote.map(item => item.id))
-  const local = all.filter(item => !ids.has(item.id) && matchesQuery(item, parsed.text))
-  return { items: [...remote, ...local].slice(0, 30).map(toItemSummary), location: null }
+  const found = await homebox.listItems({ q: parsed.text, pageSize: 30 })
+  return { items: (found.items ?? []).map(toItemSummary), location: null }
 })

@@ -54,14 +54,19 @@ export interface HbEntity extends HbEntitySummary {
   soldTo: string
   syncChildEntityLocations: boolean
   /**
-   * 0.27.0+: own storage place of an item nested in another item; absent when the place is
-   * inherited from the parent. Not in 0.26.2.
+   * Own storage place of an item nested in another item (0.27.0+); absent when the place is
+   * inherited from the parent.
    */
   locationId?: string | null
   warrantyDetails: string
   warrantyExpires: string
   fields: HbEntityField[] | null
   children?: HbEntitySummary[] | null
+}
+
+/** `GET /v1/status` (no API key needed). `build.version` looks like `v0.27.0`. */
+export interface HbStatus {
+  build: { version: string, commit?: string }
 }
 
 export interface HbEntityList {

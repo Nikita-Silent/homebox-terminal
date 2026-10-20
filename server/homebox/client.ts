@@ -4,6 +4,7 @@ import type {
   HbEntityList,
   HbEntityPatch,
   HbPathItem,
+  HbStatus,
   HbTreeItem,
 } from './types'
 
@@ -90,7 +91,14 @@ export function createHomeboxClient(options: HomeboxClientOptions) {
   return {
     getEntity,
 
-    /** Lists non-location entities. `q` matches name, model and serial number. `parentIds` is not recursive. */
+    getStatus() {
+      return request<HbStatus>('GET', '/status')
+    },
+
+    /**
+     * Lists non-location entities. `parentIds` is not recursive. `q` matches name, model and serial
+     * number; from 0.27.0 also notes, tags and custom fields, and `#000-011` matches the asset id.
+     */
     listItems(params: { q?: string, parentIds?: string[], page?: number, pageSize?: number }) {
       return request<HbEntityList>('GET', `/entities${query(params)}`)
     },

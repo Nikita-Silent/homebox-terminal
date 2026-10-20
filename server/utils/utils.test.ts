@@ -62,15 +62,6 @@ describe('item index', () => {
     }
   }
 
-  it('normalises case, ё and spaces, and needs every word', async () => {
-    const { matchesQuery, normalizeSearch } = await import('./item-index')
-    expect(normalizeSearch('  Ёлка   ЗЕЛЁНАЯ ')).toBe('елка зеленая')
-    const item = entity('7', 'Зелёная ёлка')
-    expect(matchesQuery(item, 'ЕЛКА зел')).toBe(true)
-    expect(matchesQuery(item, 'елка синяя')).toBe(false)
-    expect(matchesQuery(item, '000-7')).toBe(true)
-  })
-
   it('loads every page once, caches for 30 s and shares a load in flight', async () => {
     vi.useFakeTimers({ now: new Date('2026-10-15T09:00:00Z') })
     const { getAllItems, invalidateItemIndex } = await import('./item-index')
@@ -95,18 +86,86 @@ describe('item index', () => {
     expect(listItems).toHaveBeenCalledTimes(6)
   })
 
-  it('adds photo ids to asset lookups only when something is missing', async () => {
-    const { invalidateItemIndex, withPhotos } = await import('./item-index')
-    invalidateItemIndex()
-    const listItems = vi.fn(async () => ({ items: [entity('1', 'a', { imageId: 'img', thumbnailId: 'th' })], page: 1, pageSize: 1000, total: 1 }))
-    vi.stubGlobal('useHomebox', () => ({ listItems }))
+  it('adds photo ids to asset lookups from the item card, only where they are missing', async () => {
+    const { withPhotos } = await import('./item-index')
+    const getEntity = vi.fn(async (id: string) => id === '1' ? entity('1', 'a', { imageId: 'img', thumbnailId: 'th' }) : entity(id, 'b'))
+    vi.stubGlobal('useHomebox', () => ({ getEntity }))
     const location = entity('9', 'Полка', { entityType: { id: 'l', name: 'Location', isLocation: true } })
-    expect(await withPhotos([location])).toEqual([location])
-    expect(listItems).not.toHaveBeenCalled()
+    const withPhoto = entity('3', 'c', { imageId: 'own' })
+    expect(await withPhotos([location, withPhoto])).toEqual([location, withPhoto])
+    expect(getEntity).not.toHaveBeenCalled()
     expect(await withPhotos([entity('1', 'a'), entity('2', 'b')])).toEqual([
       expect.objectContaining({ id: '1', imageId: 'img', thumbnailId: 'th' }),
       expect.not.objectContaining({ imageId: expect.anything() }),
     ])
+  })
+})
+
+describe('homebox version', () => {
+  async function load() {
+    vi.resetModules()
+    const mod = await import('./homebox-version')
+    mod.resetHomeboxVersion()
+    return mod
+  }
+
+  it('reads release tags and knows which versions are tested', async () => {
+    const { describeVersion, parseVersion } = await load()
+    expect(parseVersion('v0.27.0')).toEqual([0, 27, 0])
+    expect(parseVersion('0.27.1-rc.1')).toEqual([0, 27, 1])
+    expect(parseVersion('dev')).toBeNull()
+    expect(describeVersion('v0.27.0')).toEqual({ version: '0.27.0', tested: true })
+    expect(describeVersion('v0.26.2')).toEqual({ version: '0.26.2', tested: false })
+    expect(describeVersion('v0.28.3')).toEqual({ version: '0.28.3', tested: false })
+    expect(describeVersion('')).toEqual({ version: null, tested: false })
+  })
+
+  it('asks Homebox once per 5 minutes, logs each new version and warns about untested ones', async () => {
+    vi.useFakeTimers()
+    const { getHomeboxVersion } = await load()
+    let version = 'v0.27.0'
+    const getStatus = vi.fn(async () => ({ build: { version } }))
+    vi.stubGlobal('useHomebox', () => ({ getStatus }))
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const [a, b] = await Promise.all([getHomeboxVersion(), getHomeboxVersion()])
+    expect(a).toEqual({ version: '0.27.0', tested: true })
+    expect(b).toBe(a)
+    expect(getStatus).toHaveBeenCalledTimes(1)
+    expect(info).toHaveBeenCalledWith('[homebox] version 0.27.0')
+
+    version = 'v0.28.0'
+    vi.advanceTimersByTime(4 * 60_000)
+    await getHomeboxVersion()
+    expect(getStatus).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(60_000)
+    expect(await getHomeboxVersion()).toMatchObject({ version: '0.28.0', tested: false })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('version 0.28.0 has not been tested'))
+
+    vi.advanceTimersByTime(5 * 60_000)
+    await getHomeboxVersion()
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(info).toHaveBeenCalledTimes(1)
+  })
+
+  it('treats an unreachable Homebox as an unknown version and asks again after 30 s', async () => {
+    vi.useFakeTimers()
+    const { getHomeboxVersion } = await load()
+    const getStatus = vi.fn()
+      .mockRejectedValueOnce(new Error('Homebox is unreachable'))
+      .mockResolvedValue({ build: { version: 'v0.27.0' } })
+    vi.stubGlobal('useHomebox', () => ({ getStatus }))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    expect(await getHomeboxVersion()).toEqual({ version: null, tested: false })
+    expect(warn).toHaveBeenCalledWith('[homebox] version check failed:', 'Homebox is unreachable')
+    vi.advanceTimersByTime(29_000)
+    await getHomeboxVersion()
+    expect(getStatus).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(1_000)
+    expect(await getHomeboxVersion()).toEqual({ version: '0.27.0', tested: true })
   })
 })
 

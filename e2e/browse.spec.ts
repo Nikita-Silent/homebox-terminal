@@ -23,11 +23,7 @@ test('search finds Cyrillic names by part of the name in any case', async ({ pag
   const thing = await hb.item(uniq('Удлинитель'), shelf.id, 3)
   await signIn(page)
   const field = page.getByPlaceholder('Название, модель, серийный номер или UID')
-  // Names are matched in the terminal's copy of the item list, refreshed every 30 s:
-  // a record created a moment ago appears within that time.
-  await expect(async () => {
-    await field.fill('')
-    await field.fill(thing.name.slice(0, 8).toLowerCase())
-    await expect(page.getByRole('link', { name: new RegExp(thing.name) })).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 40_000 })
+  // Homebox searches itself, so a record created a moment ago is found at once.
+  await field.fill(thing.name.slice(0, 8).toLowerCase())
+  await expect(page.getByRole('link', { name: new RegExp(thing.name) })).toBeVisible()
 })

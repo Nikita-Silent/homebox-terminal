@@ -38,5 +38,6 @@
 
 - Распознавание штрихкодов камерой через zxing-wasm (в тестах — только встроенный `BarcodeDetector`)
   и работа с настоящим USB-сканером.
-- Запись, только что созданная в Homebox, находится поиском по кириллическому названию в течение 30 с:
-  терминал ищет по своей копии списка, которая обновляется раз в 30 с (обход ошибки поиска Homebox).
+- Новая версия Homebox: поменять `image` в `docker-compose.e2e.yml` и `docker-compose.homebox.yml`, прогнать
+  `pnpm test:e2e`, сверить swagger с `docs/homebox-0.27.0-swagger.json` и добавить версию в
+  `TESTED_HOMEBOX_VERSIONS` (`server/utils/homebox-version.ts`).

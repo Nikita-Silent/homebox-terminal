@@ -1,5 +1,5 @@
 // In-memory Homebox used by the transfer service and API tests. Mirrors the behaviour verified
-// against Homebox 0.26.2 (see docs/homebox-api-notes.md), including that PATCH takes
+// against Homebox 0.27.0 (see docs/homebox-api-notes.md), including that PATCH takes
 // absolute quantities and duplicate copies into the source location with a name prefix.
 import type { HbDuplicateOptions, HbEntity, HbEntityList, HbEntityPatch, HbPathItem, HbTreeItem } from '../../homebox/types'
 import type { HomeboxPort } from './types'
@@ -20,6 +20,7 @@ export function createFakeHomebox() {
   const attachments = new Map<string, { type: string, body: Uint8Array }>()
   let seq = 0
   let fault: FaultHook | null = null
+  let version = 'v0.27.0'
 
   function blank(id: string, name: string, isLocation: boolean, parentId: string | null): HbEntity {
     const timestamp = new Date(Date.UTC(2026, 0, 1, 0, 0, seq)).toISOString()
@@ -62,6 +63,14 @@ export function createFakeHomebox() {
     return { ...e, parent: null }
   }
 
+  function matches(e: HbEntity, q: string) {
+    // `#000-011` is the asset id; otherwise every word, in any case, ё = е, in any of the text fields.
+    if (q.startsWith('#')) return e.assetId === q.slice(1)
+    const norm = (v: string) => v.toLocaleLowerCase('ru').replaceAll('ё', 'е')
+    const text = norm([e.name, e.modelNumber, e.serialNumber, e.manufacturer, e.description, e.notes].join(' '))
+    return norm(q).split(/\s+/).every(word => text.includes(word))
+  }
+
   function mustGet(id: string) {
     const e = entities.get(id)
     if (!e) throw new HomeboxError(404, 'Not Found')
@@ -83,12 +92,10 @@ export function createFakeHomebox() {
     getEntity: id => call('getEntity', [id], () => mustGet(id)),
 
     listItems: params => call('listItems', [params], (): HbEntityList => {
-      // Like Homebox 0.26.2: the query is lower-cased fully, the columns ASCII-only (Cyrillic never matches).
-      const q = params.q?.toLowerCase()
-      const asciiLower = (v: string) => v.replace(/[A-Z]/g, c => c.toLowerCase())
+      const q = params.q?.trim()
       const items = [...entities.values()].filter(e =>
         !e.entityType.isLocation
-        && (!q || [e.name, e.modelNumber, e.serialNumber].some(v => asciiLower(v).includes(q)))
+        && (!q || matches(e, q))
         && (!params.parentIds?.length || params.parentIds.includes(e.parent?.id ?? '')))
       return { items, page: 1, pageSize: params.pageSize ?? 50, total: items.length }
     }),
@@ -143,6 +150,9 @@ export function createFakeHomebox() {
   /** The full client surface the API handlers use; extra methods are not subject to faults. */
   const client: HomeboxClient = {
     ...port,
+    async getStatus() {
+      return { build: { version } }
+    },
     async getByAssetId(assetId: string) {
       // Like Homebox: «000-011», «000011» and «11» all match; the result carries no photo ids.
       const wanted = Number(assetId.replace('-', ''))
@@ -183,6 +193,10 @@ export function createFakeHomebox() {
     items: () => [...entities.values()].filter(e => !e.entityType.isLocation),
     setFault(hook: FaultHook | null) {
       fault = hook
+    },
+    /** What `/v1/status` reports, e.g. `v0.28.0`. */
+    setVersion(value: string) {
+      version = value
     },
   }
 }

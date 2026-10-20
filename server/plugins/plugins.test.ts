@@ -86,6 +86,31 @@ describe('transfers-resume', () => {
   })
 })
 
+describe('homebox-version', () => {
+  it('checks the Homebox version shortly after start and every 5 minutes', async () => {
+    vi.useFakeTimers()
+    const getHomeboxVersion = vi.fn(async () => ({ version: '0.27.0', tested: true }))
+    vi.stubGlobal('getHomeboxVersion', getHomeboxVersion)
+    vi.stubGlobal('useRuntimeConfig', () => ({ homebox: { baseUrl: 'http://hb', token: 'hb_x' } }))
+    ;(await plugin('homebox-version'))()
+    expect(getHomeboxVersion).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(getHomeboxVersion).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(5 * 60_000)
+    expect(getHomeboxVersion).toHaveBeenCalledTimes(2)
+  })
+
+  it('stays quiet until Homebox is configured', async () => {
+    vi.useFakeTimers()
+    const getHomeboxVersion = vi.fn()
+    vi.stubGlobal('getHomeboxVersion', getHomeboxVersion)
+    vi.stubGlobal('useRuntimeConfig', () => ({ homebox: { baseUrl: '', token: '' } }))
+    ;(await plugin('homebox-version'))()
+    await vi.advanceTimersByTimeAsync(10 * 60_000)
+    expect(getHomeboxVersion).not.toHaveBeenCalled()
+  })
+})
+
 describe('direction-contract', () => {
   it('puts the design contract first in <body>', async () => {
     let hook: ((html: { bodyPrepend: string[] }) => void) | undefined
