@@ -129,6 +129,7 @@ export function createHomeboxClient(options: HomeboxClientOptions) {
         id: current.id,
         name,
         parentId: current.parent?.id,
+        locationId: current.locationId ?? undefined,
         entityTypeId: current.entityType.id,
         tagIds: (current.tags ?? []).map(tag => tag.id),
         fields: current.fields ?? [],

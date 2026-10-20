@@ -1,9 +1,10 @@
 import type { HbEntitySummary } from '../homebox/types'
 
 /**
- * Homebox 0.26.2 search does not match Cyrillic text (it lower-cases the query in Go but the
+ * Homebox 0.26.x search does not match Cyrillic text (it lower-cases the query in Go but the
  * column with SQLite's ASCII-only lower()), so names are searched in a short-lived local copy
- * of the item list. ~1000 items fit in one request.
+ * of the item list. ~1000 items fit in one request. 0.27.0 fixed its search; the copy stays so
+ * the terminal works with either version.
  */
 const MAX_AGE_MS = 30_000
 const PAGE_SIZE = 1000

@@ -1,5 +1,5 @@
-// Subset of the Homebox 0.26.2 API schema that the terminal relies on.
-// Full spec: docs/homebox-0.26.2-swagger.json. Behaviour notes: docs/homebox-api-notes.md.
+// Subset of the Homebox 0.27.0 API schema that the terminal relies on.
+// Full spec: docs/homebox-0.27.0-swagger.json. Behaviour notes: docs/homebox-api-notes.md.
 
 export interface HbEntityType {
   id: string
@@ -53,6 +53,11 @@ export interface HbEntity extends HbEntitySummary {
   soldPrice: number
   soldTo: string
   syncChildEntityLocations: boolean
+  /**
+   * 0.27.0+: own storage place of an item nested in another item; absent when the place is
+   * inherited from the parent. Not in 0.26.2.
+   */
+  locationId?: string | null
   warrantyDetails: string
   warrantyExpires: string
   fields: HbEntityField[] | null

@@ -2,7 +2,7 @@
 # Usage: docker compose -f docker-compose.homebox.yml up -d
 services:
   homebox:
-    image: ghcr.io/sysadminsmedia/homebox:0.26.2
+    image: ghcr.io/sysadminsmedia/homebox:0.27.0
     container_name: homebox-terminal-test-homebox
     restart: unless-stopped
     ports:

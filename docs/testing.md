@@ -5,7 +5,7 @@
 | `pnpm test` | Все unit-тесты и сценарии `logic/` (vitest, три проекта) | — |
 | `pnpm test:logic` | Только сценарии бизнес-правил (`logic/features`) | — |
 | `pnpm test:coverage` | То же с отчётом о покрытии (`.cache/coverage`) | — |
-| `pnpm test:e2e` | Сборка и сквозные сценарии в браузере против настоящего Homebox 0.26.2 | Docker, Chromium |
+| `pnpm test:e2e` | Сборка и сквозные сценарии в браузере против настоящего Homebox 0.27.0 | Docker, Chromium |
 
 ## Unit (vitest)
 

@@ -18,7 +18,7 @@ test('without knowing the name: warehouse → shelf → item, and the full list'
   await expect(page.locator('a[href^="/item/"]')).toHaveCount(1)
 })
 
-test('search finds Cyrillic names that Homebox itself misses', async ({ page, hb, uniq }) => {
+test('search finds Cyrillic names by part of the name in any case', async ({ page, hb, uniq }) => {
   const shelf = await hb.location(uniq('Полка'))
   const thing = await hb.item(uniq('Удлинитель'), shelf.id, 3)
   await signIn(page)

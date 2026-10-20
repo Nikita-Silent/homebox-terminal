@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 import { TERMINAL_URL } from './e2e/env'
 
-// End-to-end: the production build of the terminal against a real, disposable Homebox 0.26.2.
+// End-to-end: the production build of the terminal against a real, disposable Homebox 0.27.0.
 // Run with `pnpm test:e2e` (builds first). Needs Docker and Chromium.
 export default defineConfig({
   testDir: 'e2e',

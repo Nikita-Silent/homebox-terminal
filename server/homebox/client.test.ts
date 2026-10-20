@@ -71,6 +71,16 @@ describe('Homebox client', () => {
       id: 'x', name: 'new', parentId: 'shelf', entityTypeId: 'type', tagIds: ['t1'], assetId: '000-007',
       quantity: 3, notes: 'n', serialNumber: 'S', fields: current.fields, purchasePrice: 10, insured: true,
     })
+    expect(put.body).not.toHaveProperty('locationId')
+  })
+
+  it('keeps the own storage place of a nested item when renaming (Homebox 0.27.0)', async () => {
+    const current = {
+      id: 'x', name: 'old', parent: { id: 'case' }, locationId: 'shelf', entityType: { id: 'type' }, tags: [], fields: [],
+    }
+    const { client, calls } = setup(call => Response.json(call.method === 'GET' ? current : {}))
+    await client.renameEntity('x', 'new')
+    expect(calls[1]!.body).toMatchObject({ parentId: 'case', locationId: 'shelf' })
   })
 
   it('returns [] from an asset lookup without items', async () => {
