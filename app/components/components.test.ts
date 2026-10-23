@@ -10,6 +10,7 @@ import LocationPicker from './LocationPicker.vue'
 import LocationRow from './LocationRow.vue'
 import QuantityStepper from './QuantityStepper.vue'
 import StatusStrip from './StatusStrip.vue'
+import TouchKeyboard from './TouchKeyboard.vue'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -227,5 +228,88 @@ describe('CameraScanner', () => {
     await wrapper.find('button').trigger('click')
     await wrapper.trigger('keydown', { key: 'Escape' })
     expect(wrapper.emitted('close')).toHaveLength(2)
+  })
+})
+
+describe('TouchKeyboard', () => {
+  let cleanup = () => {}
+  afterEach(() => cleanup())
+
+  async function setup(html: string) {
+    const host = document.createElement('div')
+    host.innerHTML = html
+    document.body.append(host)
+    const wrapper = await mountSuspended(TouchKeyboard, { attachTo: document.body })
+    const input = host.querySelector('input')!
+    const tap = async (el: Element = input) => {
+      el.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+      ;(el as HTMLElement).focus()
+      await nextTick()
+    }
+    const key = (name: string) => wrapper.findAll('button').find(b => b.text() === name || b.attributes('aria-label') === name)!
+    cleanup = () => {
+      wrapper.unmount()
+      host.remove()
+    }
+    return { wrapper, host, input, tap, key }
+  }
+
+  it('opens on a tapped text field, types Russian, English and digits, and searches on «Найти»', async () => {
+    const { wrapper, host, input, tap, key } = await setup(
+      '<form><input type="search" inputmode="search" enterkeyhint="search"></form>',
+    )
+    const submitted = vi.fn((e: Event) => e.preventDefault())
+    host.querySelector('form')!.addEventListener('submit', submitted)
+    const typed: string[] = []
+    input.addEventListener('input', () => typed.push(input.value))
+
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+    await tap()
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(true)
+    // The system keyboard stays down on tablets while this one is up.
+    expect(input.getAttribute('inputmode')).toBe('none')
+
+    for (const k of ['к', 'а', 'б']) await key(k).trigger('click')
+    await key('Стереть').trigger('click')
+    await key('Заглавная буква').trigger('click')
+    await key('Ь').trigger('click')
+    await key('ENG').trigger('click')
+    for (const k of ['Пробел', 'u', 't', 'p', '6']) await key(k).trigger('click')
+    expect(input.value).toBe('каЬ utp6')
+    expect(typed).toHaveLength(10)
+
+    await key('Всё').trigger('click')
+    expect(input.value).toBe('')
+    await key('Найти').trigger('click')
+    expect(submitted).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+    expect(input.getAttribute('inputmode')).toBe('search')
+  })
+
+  it('gives PIN fields the digit pad and hides on «Скрыть клавиатуру»', async () => {
+    const { wrapper, input, tap, key } = await setup('<input inputmode="numeric">')
+    await tap()
+    expect(wrapper.text()).not.toContain('Пробел')
+    for (const k of ['4', '8', '2']) await key(k).trigger('click')
+    expect(input.value).toBe('482')
+    expect(key('Готово').exists()).toBe(true)
+    await key('Скрыть клавиатуру').trigger('click')
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+    expect(document.activeElement).not.toBe(input)
+  })
+
+  it('leaves dates, other controls and programmatic focus alone, and closes when focus moves on', async () => {
+    const { wrapper, host, input, tap } = await setup('<input><input type="date"><button>ok</button>')
+    input.focus()
+    await nextTick()
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+    await tap(host.querySelector('input[type="date"]')!)
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+
+    await tap()
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(true)
+    await tap(host.querySelector('button')!)
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+    expect(input.hasAttribute('inputmode')).toBe(false)
   })
 })

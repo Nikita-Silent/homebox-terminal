@@ -31,7 +31,9 @@ negative stock, no double execution, no loss on partial moves, recovery after ne
 - Target shelves are chosen both ways equally: by scanning a shelf label or by picking in the location tree.
   Shelves are numbered (01–25) inside rooms and warehouses.
 - ~800 records. Quantity 1 = individually tracked unit with its own history; quantity > 1 = quantity-tracked.
-- System on-screen keyboard must work for manual input.
+- Manual input must work without a physical keyboard. The terminal has its own on-screen keyboard
+  (`app/components/TouchKeyboard.vue`): the system one stays hidden because the USB scanner counts as a
+  connected keyboard. It opens when a text field is tapped and hides as soon as a real keyboard or the scanner types.
 
 ## Capabilities and Constraints
 
