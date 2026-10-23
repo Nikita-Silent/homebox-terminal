@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleAlert, Info, LoaderCircle, TriangleAlert } from '@lucide/vue'
+import { CircleAlert, Info, TriangleAlert } from '@lucide/vue'
 
 /**
  * Status without colour: error = inverted strip, pending = diagonal hatch,
@@ -11,7 +11,7 @@ const props = defineProps<{
   message: string
 }>()
 
-const icon = computed(() => ({ error: CircleAlert, info: Info, pending: LoaderCircle, attention: TriangleAlert })[props.kind])
+const icon = computed(() => ({ error: CircleAlert, info: Info, pending: null, attention: TriangleAlert })[props.kind])
 </script>
 
 <template>
@@ -27,10 +27,16 @@ const icon = computed(() => ({ error: CircleAlert, info: Info, pending: LoaderCi
       aria-hidden="true"
     />
     <div class="flex items-start gap-4 p-5">
+      <OrbLoader
+        v-if="kind === 'pending'"
+        :size="28"
+        class="mt-0.5"
+        aria-hidden="true"
+      />
       <component
         :is="icon"
+        v-else-if="icon"
         class="mt-0.5 size-7 shrink-0"
-        :class="kind === 'pending' && 'animate-spin'"
         :stroke-width="2.5"
         aria-hidden="true"
       />

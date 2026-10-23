@@ -87,10 +87,9 @@ const matches = computed(() => {
       </Button>
     </StatusStrip>
 
-    <div
+    <LoadingBlock
       v-else-if="!tree"
-      class="frame hatch-pending h-64"
-      aria-busy="true"
+      text="Загружаем склады…"
     />
 
     <template v-else>

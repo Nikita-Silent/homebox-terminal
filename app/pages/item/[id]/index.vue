@@ -51,10 +51,9 @@ useScanner(async (code) => {
       {{ back.label }}
     </BackLink>
 
-    <div
+    <LoadingBlock
       v-if="status === 'pending' && !item"
-      class="frame hatch-pending h-96"
-      aria-busy="true"
+      text="Открываем карточку…"
     />
 
     <StatusStrip

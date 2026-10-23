@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ItemSearchResult, ItemSummary } from '#shared/types/terminal'
-import { Camera, List, LoaderCircle, Search, X } from '@lucide/vue'
+import { Camera, List, Search, X } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,6 +24,7 @@ async function search(q: string) {
   }
   const seq = ++searchSeq
   loading.value = true
+  pending.value = text
   error.value = null
   try {
     const data = await $fetch<ItemSearchResult>('/api/items', { query: { q: text } })
@@ -40,31 +41,26 @@ async function search(q: string) {
   }
 }
 
-// Own timer instead of a debounce helper: a scanned code must be able to cancel the pending search.
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-let skipSearch = false
-watch(query, (q) => {
+// No search while typing: it starts on «Найти» or Enter, so the screen stays still under the finger.
+watch(query, () => {
   notice.value = null
-  clearTimeout(searchTimer)
-  if (skipSearch) {
-    skipSearch = false
-    return
-  }
-  searchTimer = setTimeout(() => search(q), 300)
 })
-onBeforeUnmount(() => clearTimeout(searchTimer))
 
-/** Scanned codes (USB scanner, camera, or Enter in the field) resolve straight to the item. */
+/** What is being looked up right now, for the loader. */
+const pending = ref('')
+
+/** Scanned codes (USB scanner, camera) and a submitted query: one item opens straight away. */
 async function resolveCode(code: string) {
-  // The code's own answer wins over a text search typed or scheduled before it.
-  clearTimeout(searchTimer)
-  searchSeq++
+  // The latest code wins over a search restored from the address.
+  const seq = ++searchSeq
   cameraOpen.value = false
   notice.value = null
   error.value = null
   loading.value = true
+  pending.value = code
   try {
     const found = await lookupCode(code)
+    if (seq !== searchSeq) return
     if (found.items.length === 1) {
       await navigateTo(`/item/${found.items[0]!.id}`)
       return
@@ -74,16 +70,17 @@ async function resolveCode(code: string) {
       await navigateTo(`/browse/${found.location.id}`)
       return
     }
-    if (query.value !== code) skipSearch = true
     query.value = code
     results.value = found.items
     searched.value = code
+    // Kept in the address: «Назад» from a card brings this list back.
+    router.replace({ query: { q: code } })
   }
   catch (e) {
-    error.value = toApiError(e)
+    if (seq === searchSeq) error.value = toApiError(e)
   }
   finally {
-    loading.value = false
+    if (seq === searchSeq) loading.value = false
   }
 }
 
@@ -91,7 +88,6 @@ useScanner(resolveCode)
 
 /** The field's own clear key: a gloved finger cannot select the text to erase it. */
 function clearQuery() {
-  clearTimeout(searchTimer)
   searchSeq++
   query.value = ''
   results.value = null
@@ -101,13 +97,12 @@ function clearQuery() {
   input.value?.focus()
 }
 
-/** While a query is typed the screen belongs to its results: the title and the tour step aside. */
-const idle = computed(() => !query.value.trim() && !results.value)
+/** Once something is searched the screen belongs to its results: the title and the tour step aside. */
+const idle = computed(() => !results.value && !loading.value)
 
 function submit() {
   const text = query.value.trim()
   if (!text) return
-  // A fast Enter right after typing is how a scanner finishes a code in a focused field.
   resolveCode(text)
 }
 
@@ -206,18 +201,11 @@ onMounted(() => {
       :message="notice"
     />
 
-    <section
+    <LoadingBlock
       v-if="loading && !results"
-      class="flex flex-col gap-3"
-      aria-busy="true"
-      aria-label="Поиск"
-    >
-      <div
-        v-for="n in 3"
-        :key="n"
-        class="frame hatch-pending h-24"
-      />
-    </section>
+      state="searching"
+      :text="`Ищем «${pending}»…`"
+    />
 
     <section
       v-else-if="results"
@@ -230,11 +218,11 @@ onMounted(() => {
         class="t-small flex h-6 items-center gap-2"
         role="status"
       >
-        <LoaderCircle
-          class="size-5 animate-spin"
-          :stroke-width="2.5"
+        <OrbLoader
+          :size="28"
+          label="Загрузка"
         />
-        Ищем «{{ query.trim() }}»…
+        Ищем «{{ pending }}»…
       </p>
       <p
         v-else

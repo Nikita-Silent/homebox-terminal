@@ -10,6 +10,7 @@ import ItemPhoto from './ItemPhoto.vue'
 import ItemRow from './ItemRow.vue'
 import LocationPicker from './LocationPicker.vue'
 import LocationRow from './LocationRow.vue'
+import OrbLoader from './OrbLoader.vue'
 import QuantityStepper from './QuantityStepper.vue'
 import StatusStrip from './StatusStrip.vue'
 import TouchKeyboard from './TouchKeyboard.vue'
@@ -130,6 +131,15 @@ describe('QuantityStepper', () => {
     finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('OrbLoader', () => {
+  it('is a labelled image of the asked size', async () => {
+    const wrapper = await mountSuspended(OrbLoader, { props: { size: 28, label: 'Ищем' } })
+    const canvas = wrapper.find('canvas')
+    expect(canvas.attributes()).toMatchObject({ 'role': 'img', 'aria-label': 'Ищем' })
+    expect(canvas.attributes('style')).toContain('width: 28px')
   })
 })
 

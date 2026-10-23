@@ -25,5 +25,9 @@ test('search finds Cyrillic names by part of the name in any case', async ({ pag
   const field = page.getByPlaceholder('Название, модель, серийный номер или UID')
   // Homebox searches itself, so a record created a moment ago is found at once.
   await field.fill(thing.name.slice(0, 8).toLowerCase())
-  await expect(page.getByRole('link', { name: new RegExp(thing.name) })).toBeVisible()
+  // Nothing happens until the search is asked for.
+  await expect(page.getByRole('link', { name: new RegExp(thing.name) })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Найти' }).click()
+  // The only match opens its card.
+  await expect(page).toHaveURL(new RegExp(`/item/${thing.id}$`))
 })

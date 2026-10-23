@@ -150,14 +150,9 @@ onBeforeUnmount(() => {
   observer?.disconnect()
 })
 
-/** A search or filter field: what it finds appears below it and must stay in view while typing. */
-function filtersBelow(el: KeyboardField) {
-  return el.type === 'search' || el.getAttribute('enterkeyhint') === 'search'
-}
-
-// Room below the page so the keyboard never covers the field being typed into. A covered field,
-// and any search field, goes up to just under the rail (or a sticky bar it sits under), leaving the
-// most room for the results below it.
+// Room below the page so the keyboard never covers the field being typed into. A covered field goes
+// up to just under the rail. So does a live filter (`data-keyboard-lift`): its matches appear below
+// it as letters are typed. Any other field already in view stays put: the screen never jumps.
 watch(panel, (el) => {
   observer?.disconnect()
   height.value = 0
@@ -170,7 +165,7 @@ watch(panel, (el) => {
     if (!input || !target) return
     // A field in a sticky bar is already where it can be.
     if (input.closest('[data-sticky-filter]')) return
-    if (target.bottom <= top - 16 && !filtersBelow(input)) return
+    if (target.bottom <= top - 16 && !input.hasAttribute('data-keyboard-lift')) return
     const rail = document.querySelector('[data-app-rail]')?.getBoundingClientRect().bottom ?? 0
     const lift = target.top - rail - 16
     if (Math.abs(lift) > 8) window.scrollBy({ top: lift })

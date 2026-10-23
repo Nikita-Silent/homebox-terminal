@@ -70,10 +70,9 @@ const tabClass = (on: boolean) => [
       </Button>
     </StatusStrip>
 
-    <div
+    <LoadingBlock
       v-else-if="!data || status === 'pending'"
-      class="frame hatch-pending h-64"
-      aria-busy="true"
+      text="Открываем место…"
     />
 
     <template v-else>

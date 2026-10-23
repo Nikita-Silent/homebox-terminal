@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { JournalEntry, JournalPage } from '#shared/types/terminal'
-import { ArrowRight, ArrowUp, LoaderCircle, RefreshCw, RotateCcw } from '@lucide/vue'
+import { ArrowRight, ArrowUp, RefreshCw, RotateCcw } from '@lucide/vue'
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom'
 
@@ -276,10 +276,9 @@ const customInvalid = computed(() => period.value === 'custom' && !range.value)
       </Button>
     </StatusStrip>
 
-    <div
+    <LoadingBlock
       v-else-if="!page"
-      class="frame hatch-pending h-64"
-      aria-busy="true"
+      text="Загружаем журнал…"
     />
 
     <template v-else>
@@ -305,10 +304,10 @@ const customInvalid = computed(() => period.value === 'custom' && !range.value)
           </p>
         </div>
         <div class="flex min-w-48 flex-1 items-center gap-2 border-l-[3px] border-ink px-5 py-2 text-lg font-semibold">
-          <LoaderCircle
+          <OrbLoader
             v-if="loading"
-            class="size-6 shrink-0 animate-spin"
-            :stroke-width="2.5"
+            :size="28"
+            label="Загрузка"
           />
           <span class="min-w-0 break-words">{{ loading ? 'Обновляем…' : summary }}</span>
         </div>

@@ -2,7 +2,7 @@
 import type { ItemDetail, LocationNode, TransferInput, TransferPreview, TransferResult } from '#shared/types/terminal'
 import type { PickedLocation } from '~/components/LocationPicker.vue'
 import type { CartLine } from '~/composables/useCart'
-import { ArrowDown, ArrowRight, Check, LoaderCircle, Pencil, RotateCcw, ScanBarcode, Search, Trash2, X } from '@lucide/vue'
+import { ArrowDown, ArrowRight, Check, Pencil, RotateCcw, ScanBarcode, Search, Trash2, X } from '@lucide/vue'
 
 /** Per-line state that is not worth persisting: it is rebuilt from Homebox whenever the cart opens. */
 interface LineState {
@@ -523,9 +523,9 @@ const finishedGroups = computed(() => FINISHED
             v-if="lineState(line.item.id).moving || lineState(line.item.id).loading"
             class="flex items-center gap-2 text-lg font-medium"
           >
-            <LoaderCircle
-              class="size-5 animate-spin"
-              :stroke-width="2.5"
+            <OrbLoader
+              :size="28"
+              label="Загрузка"
             />
             {{ lineState(line.item.id).moving ? 'Перемещаем…' : 'Проверяем по Homebox…' }}
           </p>
@@ -663,9 +663,10 @@ const finishedGroups = computed(() => FINISHED
           :disabled="!canMove"
           @click="moveAll"
         >
-          <LoaderCircle
+          <OrbLoader
             v-if="moving"
-            class="animate-spin"
+            :size="28"
+            label="Загрузка"
           />
           <Check v-else />
           {{ moving ? 'Перемещаем…' : 'Переместить всё' }}

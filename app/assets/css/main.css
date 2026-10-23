@@ -81,6 +81,12 @@
 @layer base {
   * {
     @apply border-border;
+    /* A touch terminal scrolls by finger: no scrollbars anywhere, scrolling itself stays. */
+    scrollbar-width: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
   }
 
   html {
@@ -88,8 +94,6 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     font-size: 18px;
-    scrollbar-color: var(--ink) var(--paper);
-    scrollbar-width: auto;
   }
 
   body {

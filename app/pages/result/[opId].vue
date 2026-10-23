@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TransferResult } from '#shared/types/terminal'
-import { ArrowRight, Check, LoaderCircle, RefreshCw, RotateCcw, ScanBarcode } from '@lucide/vue'
+import { ArrowRight, Check, RefreshCw, RotateCcw, ScanBarcode } from '@lucide/vue'
 
 const route = useRoute()
 const opId = String(route.params.opId)
@@ -231,9 +231,10 @@ const headline = computed(() => {
                 :disabled="checking"
                 @click="refresh()"
               >
-                <LoaderCircle
+                <OrbLoader
                   v-if="checking"
-                  class="animate-spin"
+                  :size="28"
+                  label="Загрузка"
                 />
                 <RefreshCw v-else />
                 Проверить статус ещё раз

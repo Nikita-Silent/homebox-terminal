@@ -95,10 +95,10 @@ function jump(letter: string) {
       </Button>
     </StatusStrip>
 
-    <div
+    <LoadingBlock
       v-else-if="!items"
-      class="frame hatch-pending h-64"
-      aria-busy="true"
+      text="Загружаем список…"
+      state="searching"
     />
 
     <template v-else>

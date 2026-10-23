@@ -34,49 +34,40 @@ describe('search screen', () => {
     })
   })
 
-  it('searches as you type and keeps the query in the address', async () => {
+  it('searches only on «Найти» or Enter, and keeps the query in the address', async () => {
     const page = await mountPage(SearchPage)
     await page.find('#search').setValue('кроко')
     await settle(500)
-    expect(page.text()).toContain('Найдено по «кроко»: 1')
-    expect(page.text()).toContain('Крокодилы')
+    // Typing alone changes nothing on the screen.
+    expect(page.text()).not.toContain('Найдено')
+    expect(page.find('h1').classes()).not.toContain('sr-only')
+    expect(route().query.q).toBeUndefined()
+    await page.find('form').trigger('submit')
+    await settle()
+    expect(page.text()).toContain('Найдено по «кроко»: 2')
     expect(route().query.q).toBe('кроко')
-    await page.find('#search').setValue('нет такого')
-    await settle(500)
-    expect(page.text()).toContain('Ничего не найдено по «нет такого»')
   })
 
-  it('gives the results the screen while typing, and clears the query with one key', async () => {
+  it('restores the results of a query from the address', async () => {
+    const page = await mountPage(SearchPage, { route: '/?q=кроко' })
+    await settle()
+    expect(page.text()).toContain('Крокодилы')
+  })
+
+  it('gives the results the screen once searched, and clears the query with one key', async () => {
     const page = await mountPage(SearchPage)
-    expect(page.find('h1').classes()).not.toContain('sr-only')
     expect(page.find('a[href="/browse"]').exists()).toBe(true)
     await page.find('#search').setValue('кроко')
-    await settle(500)
+    await page.find('form').trigger('submit')
+    await settle()
     // The title and the way to the warehouses step aside for the results.
     expect(page.find('h1').classes()).toContain('sr-only')
     expect(page.find('a[href="/browse"]').exists()).toBe(false)
     await page.find('[aria-label="Очистить поиск"]').trigger('click')
     await settle(0)
     expect((page.find('#search').element as HTMLInputElement).value).toBe('')
-    expect(page.text()).not.toContain('Крокодилы')
+    expect(page.findAll('a[href^="/item/"]')).toHaveLength(0)
     expect(route().query.q).toBeUndefined()
-  })
-
-  it('takes the old results out of reach while a new query is on its way', async () => {
-    const page = await mountPage(SearchPage)
-    await page.find('#search').setValue('кроко')
-    await settle(500)
-    await page.find('#search').setValue('кроков')
-    await settle(350)
-    await page.find('#search').setValue('крокоди')
-    await new Promise(resolve => setTimeout(resolve, 320))
-    const list = page.find('section[aria-label="Найденное оборудование"]')
-    if (list.attributes('aria-busy') === 'true') {
-      expect(list.text()).toContain('Ищем «крокоди»')
-      expect(list.find('[inert]').exists()).toBe(true)
-    }
-    await settle(300)
-    expect(page.find('section[aria-label="Найденное оборудование"] [inert]').exists()).toBe(false)
   })
 
   it('opens the card for a scanned item and the shelf for a scanned shelf label', async () => {

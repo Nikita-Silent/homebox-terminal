@@ -31,6 +31,7 @@ defineExpose({ focus: () => input.value?.focus() })
       v-model="model"
       type="search"
       autocomplete="off"
+      data-keyboard-lift
       :placeholder="placeholder ?? label"
       class="h-16 min-w-0 flex-1 bg-transparent text-xl font-semibold placeholder:font-normal placeholder:text-ink-soft focus:outline-none"
     >

@@ -99,10 +99,11 @@ for (const screen of SCREENS) {
       await field.tap()
       const keyboard = page.getByRole('group', { name: 'Экранная клавиатура' })
       for (const key of 'гирлянда') await keyboard.getByRole('button', { name: key, exact: true }).tap()
-      // Live search rewrites the address; the keyboard stays up.
-      await expect(page).toHaveURL(/\?q=/)
+      // Typing searches nothing and moves nothing: the screen stays still under the finger.
       await expect(keyboard).toBeVisible()
       await expect(field).toHaveValue('гирлянда')
+      await expect(page).not.toHaveURL(/\?q=/)
+      expect(await page.evaluate(() => window.scrollY)).toBe(0)
       await expectInReach(field)
     })
   })

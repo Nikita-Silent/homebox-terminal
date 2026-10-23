@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ItemDetail, LocationNode, TransferInput, TransferPreview, TransferResult } from '#shared/types/terminal'
 import type { PickedLocation } from '~/components/LocationPicker.vue'
-import { ArrowDown, ArrowRight, Check, LoaderCircle, RefreshCw, ScanBarcode } from '@lucide/vue'
+import { ArrowDown, ArrowRight, Check, RefreshCw, ScanBarcode } from '@lucide/vue'
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
@@ -410,9 +410,9 @@ useScanner(async (code) => {
             v-if="previewLoading"
             class="mt-1 flex items-center gap-2 text-lg"
           >
-            <LoaderCircle
-              class="size-5 animate-spin"
-              :stroke-width="2.5"
+            <OrbLoader
+              :size="28"
+              label="Загрузка"
             />
             Проверяем по Homebox…
           </p>
@@ -449,9 +449,10 @@ useScanner(async (code) => {
             :disabled="!canConfirm"
             @click="confirm"
           >
-            <LoaderCircle
+            <OrbLoader
               v-if="submitting"
-              class="animate-spin"
+              :size="28"
+              label="Загрузка"
             />
             <Check v-else />
             {{ submitting ? 'Перемещаем…' : submitError?.code === 'NETWORK' ? 'Повторить' : 'Подтвердить' }}
@@ -460,10 +461,9 @@ useScanner(async (code) => {
       </ConfirmBar>
     </template>
 
-    <div
+    <LoadingBlock
       v-else
-      class="frame hatch-pending h-96"
-      aria-busy="true"
+      text="Готовим перемещение…"
     />
   </div>
 </template>
