@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import type { ItemSummary } from '#shared/types/terminal'
-import { ArrowLeft, Search } from '@lucide/vue'
+import { ArrowUp } from '@lucide/vue'
 
 const PAGE = 60
 
 const { data: items, error, refresh } = await useFetch<ItemSummary[]>('/api/items/all')
 const apiError = computed(() => (error.value ? toApiError(error.value) : null))
-const filter = ref('')
-const shown = ref(PAGE)
+// The filter and how far the list was opened survive a visit to an item and a later return.
+const filter = useState('browse-all:filter', () => '')
+const shown = useState('browse-all:shown', () => PAGE)
 const notice = ref<string | null>(null)
 useBrowseScanner((message) => {
   notice.value = message
 })
+
+const { load: loadTree, pathTo } = useLocationTree()
+onMounted(() => loadTree())
 
 const normalize = (text: string) => text.toLocaleLowerCase('ru').replaceAll('ё', 'е')
 
@@ -20,7 +24,8 @@ const filtered = computed(() => {
   const all = items.value ?? []
   if (!words.length) return all
   return all.filter((item) => {
-    const hay = normalize(`${item.name} ${item.assetId} ${item.modelNumber} ${item.location?.name ?? ''}`)
+    const place = pathTo(item.location?.id) ?? (item.location ? [item.location] : [])
+    const hay = normalize(`${item.name} ${item.assetId} ${item.modelNumber} ${pathText(place)}`)
     return words.every(w => hay.includes(w))
   })
 })
@@ -28,6 +33,8 @@ const filtered = computed(() => {
 watch(filter, () => {
   shown.value = PAGE
 })
+
+const toTop = () => window.scrollTo({ top: 0 })
 
 /**
  * Jump keys: one per Cyrillic first letter; Latin names share «A–Z» (Latin C and Cyrillic С look
@@ -47,22 +54,20 @@ function jump(letter: string) {
   const index = filtered.value.findIndex(i => letterKey(i.name) === letter)
   if (index < 0) return
   shown.value = Math.max(shown.value, index + PAGE)
-  nextTick(() => document.getElementById(`item-${filtered.value[index]!.id}`)?.scrollIntoView({ block: 'start' }))
+  nextTick(() => {
+    const row = document.getElementById(`item-${filtered.value[index]!.id}`)
+    // Just under the sticky filter, not behind it.
+    const bar = document.querySelector('[data-sticky-filter]')?.getBoundingClientRect().bottom ?? 0
+    if (row) window.scrollBy({ top: row.getBoundingClientRect().top - bar - 12 })
+  })
 }
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
-    <NuxtLink
-      to="/browse"
-      class="t-label flex w-fit items-center gap-2 text-xl hover:underline hover:decoration-[3px] hover:underline-offset-4"
-    >
-      <ArrowLeft
-        class="size-6"
-        :stroke-width="2.5"
-      />
+  <div class="flex flex-col gap-6 short:gap-4">
+    <BackLink to="/browse">
       Все склады
-    </NuxtLink>
+    </BackLink>
 
     <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
       Всё оборудование
@@ -97,41 +102,48 @@ function jump(letter: string) {
     />
 
     <template v-else>
-      <div class="frame flex items-center gap-3 bg-paper px-4">
-        <Search
-          class="size-6 shrink-0"
-          :stroke-width="2.5"
-          aria-hidden="true"
-        />
-        <label
-          class="sr-only"
-          for="all-filter"
-        >Отфильтровать список</label>
-        <input
-          id="all-filter"
-          v-model="filter"
-          type="search"
-          autocomplete="off"
-          placeholder="Название, модель или UID"
-          class="h-16 min-w-0 flex-1 bg-transparent text-xl font-semibold placeholder:font-normal placeholder:text-ink-soft focus:outline-none"
-        >
-      </div>
-
-      <nav
-        v-if="letters.length > 1"
-        class="flex flex-wrap gap-2"
-        aria-label="Перейти к букве"
+      <!-- The filter and the letters ride under the rail: changing the choice never needs a scroll back up. -->
+      <div
+        class="sticky top-16 z-20 -mx-4 flex flex-col gap-2 border-b-[3px] border-ink bg-paper px-4 py-2 sm:-mx-8 sm:px-8"
+        data-sticky-filter
       >
-        <button
-          v-for="letter in letters"
-          :key="letter"
-          type="button"
-          class="t-label frame h-14 min-w-14 bg-paper px-3 text-2xl hover:bg-wash active:bg-ink active:text-paper"
-          @click="jump(letter)"
+        <div class="flex gap-2">
+          <FilterField
+            id="all-filter"
+            v-model="filter"
+            class="min-w-0 flex-1"
+            label="Отфильтровать список"
+            placeholder="Название, модель, UID или место"
+          />
+          <button
+            type="button"
+            class="frame flex w-16 shrink-0 items-center justify-center bg-paper hover:bg-wash active:bg-ink active:text-paper"
+            aria-label="В начало списка"
+            @click="toTop"
+          >
+            <ArrowUp
+              class="size-7"
+              :stroke-width="2.5"
+            />
+          </button>
+        </div>
+
+        <nav
+          v-if="letters.length > 1"
+          class="flex gap-2 overflow-x-auto pb-1"
+          aria-label="Перейти к букве"
         >
-          {{ letter }}
-        </button>
-      </nav>
+          <button
+            v-for="letter in letters"
+            :key="letter"
+            type="button"
+            class="t-label frame h-16 min-w-16 shrink-0 bg-paper px-3 text-2xl hover:bg-wash active:bg-ink active:text-paper"
+            @click="jump(letter)"
+          >
+            {{ letter }}
+          </button>
+        </nav>
+      </div>
 
       <p class="t-small">
         {{ filtered.length }} из {{ items.length }}
@@ -143,7 +155,6 @@ function jump(letter: string) {
           :id="`item-${item.id}`"
           :key="item.id"
           :item="item"
-          class="scroll-mt-20"
         />
       </div>
 

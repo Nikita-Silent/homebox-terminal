@@ -10,6 +10,15 @@ const { signIn } = useAuth()
 const { data: people, error, refresh } = await useFetch<Actor[]>('/api/auth/users')
 const apiError = computed(() => (error.value ? toApiError(error.value) : null))
 
+/**
+ * A long list is narrowed by the first letter of a first or last name: one tap, no keyboard.
+ * A short one needs nothing.
+ */
+const letter = ref<string | null>(null)
+const initials = (person: Actor) => person.name.split(/\s+/).filter(Boolean).map(word => word.charAt(0).toLocaleUpperCase('ru'))
+const letters = computed(() => [...new Set((people.value ?? []).flatMap(initials))].sort((a, b) => a.localeCompare(b, 'ru')))
+const shownPeople = computed(() => (letter.value ? (people.value ?? []).filter(p => initials(p).includes(letter.value!)) : people.value ?? []))
+
 const chosen = ref<Actor | null>(null)
 const pin = ref('')
 const busy = ref(false)
@@ -122,13 +131,40 @@ const keyClass = 't-num frame flex h-20 items-center justify-center bg-paper tex
         </p>
       </div>
 
+      <nav
+        v-if="people && people.length > 9 && letters.length > 1"
+        class="flex flex-wrap gap-2"
+        aria-label="Первая буква имени или фамилии"
+      >
+        <button
+          type="button"
+          class="t-label frame h-16 px-4 text-2xl"
+          :class="!letter ? 'bg-ink text-paper' : 'bg-paper hover:bg-wash active:bg-ink active:text-paper'"
+          :aria-pressed="!letter"
+          @click="letter = null"
+        >
+          Все
+        </button>
+        <button
+          v-for="l in letters"
+          :key="l"
+          type="button"
+          class="t-label frame h-16 min-w-16 px-3 text-2xl"
+          :class="letter === l ? 'bg-ink text-paper' : 'bg-paper hover:bg-wash active:bg-ink active:text-paper'"
+          :aria-pressed="letter === l"
+          @click="letter = letter === l ? null : l"
+        >
+          {{ l }}
+        </button>
+      </nav>
+
       <ul
-        v-else
+        v-if="people?.length"
         class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
         aria-label="Сотрудники"
       >
         <li
-          v-for="person in people"
+          v-for="person in shownPeople"
           :key="person.id"
         >
           <button
@@ -149,21 +185,20 @@ const keyClass = 't-num frame flex h-20 items-center justify-center bg-paper tex
 
     <form
       v-else
-      class="mx-auto grid w-full max-w-md items-start gap-5 lg:max-w-5xl lg:grid-cols-2 lg:gap-8"
+      class="mx-auto grid w-full max-w-md items-start gap-5 sm:max-w-5xl sm:grid-cols-2 sm:gap-6 lg:gap-8"
       @submit.prevent="submit"
     >
-      <div class="flex flex-col gap-5">
-      <button
-        type="button"
-        class="t-label flex w-fit items-center gap-2 text-xl hover:underline hover:decoration-[3px] hover:underline-offset-4"
-        @click="back"
-      >
-        <ArrowLeft
-          class="size-6"
-          :stroke-width="2.5"
-        />
-        Другой сотрудник
-      </button>
+      <div class="flex flex-col gap-5 short:gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="touch"
+          class="w-full justify-start"
+          @click="back"
+        >
+          <ArrowLeft class="size-7" />
+          Другой сотрудник
+        </Button>
 
       <div class="frame bg-paper">
         <p class="bg-ink px-5 py-3 text-paper">

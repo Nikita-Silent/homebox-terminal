@@ -37,6 +37,7 @@ test('a real keyboard or the scanner hides the on-screen one', async ({ page }) 
 test('the PIN field of a new employee gets the digit pad', async ({ page }) => {
   await signIn(page, ADMIN, '/admin/users')
   const keyboard = page.getByRole('group', { name: 'Экранная клавиатура' })
+  await page.getByRole('button', { name: 'Новый сотрудник' }).tap()
   await page.getByPlaceholder('4–8 цифр').tap()
   await expect(keyboard).toBeVisible()
   await expect(keyboard.getByRole('button', { name: 'Пробел' })).toHaveCount(0)

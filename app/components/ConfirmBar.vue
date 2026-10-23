@@ -5,6 +5,8 @@
  */
 const bar = ref<HTMLElement | null>(null)
 const { height } = useElementSize(bar, undefined, { box: 'border-box' })
+/** While the on-screen keyboard is up it owns the bottom edge; the bar comes back when it hides. */
+const keyboardOpen = useState('touch-keyboard:open', () => false)
 </script>
 
 <template>
@@ -13,6 +15,7 @@ const { height } = useElementSize(bar, undefined, { box: 'border-box' })
     :style="{ height: `${height}px` }"
   />
   <div
+    v-show="!keyboardOpen"
     ref="bar"
     class="fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-ink bg-paper"
   >

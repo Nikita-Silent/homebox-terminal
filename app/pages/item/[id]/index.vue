@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ItemDetail } from '#shared/types/terminal'
-import { ArrowLeft, ArrowRightLeft, Check, Expand, RefreshCw, ShoppingBasket, X } from '@lucide/vue'
+import { ArrowRightLeft, Check, Expand, RefreshCw, ShoppingBasket, Warehouse } from '@lucide/vue'
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
@@ -17,9 +17,12 @@ function addToCart(value: ItemDetail) {
   notice.value = cart.add(value) === 'full' ? `В корзине уже ${CART_LIMIT} позиций — сначала переместите их` : null
 }
 const photoOpen = ref(false)
-onKeyStroke('Escape', () => {
-  photoOpen.value = false
-})
+
+/** Back to where the card was opened from: the search with its query, a shelf, the catalogue. */
+const previous = (window.history.state as { back?: string | null } | null)?.back ?? null
+const { load: loadTree, pathTo } = useLocationTree()
+onMounted(() => loadTree())
+const back = computed(() => backTarget(previous, shelf.value, placeId => pathTo(placeId)?.at(-1)?.name ?? null))
 
 /** Scanning a shelf here jumps straight to the move screen with that shelf chosen. */
 useScanner(async (code) => {
@@ -44,16 +47,9 @@ useScanner(async (code) => {
 
 <template>
   <div class="flex flex-col gap-6">
-    <NuxtLink
-      to="/"
-      class="t-label flex w-fit items-center gap-2 text-xl hover:underline hover:decoration-[3px] hover:underline-offset-4"
-    >
-      <ArrowLeft
-        class="size-6"
-        :stroke-width="2.5"
-      />
-      К поиску
-    </NuxtLink>
+    <BackLink :to="back.to">
+      {{ back.label }}
+    </BackLink>
 
     <div
       v-if="status === 'pending' && !item"
@@ -150,6 +146,17 @@ useScanner(async (code) => {
                 <p class="t-label mt-1 text-5xl break-words sm:text-6xl short:sm:text-5xl">
                   {{ shelf?.name ?? 'Без локации' }}
                 </p>
+                <NuxtLink
+                  v-if="shelf"
+                  :to="`/browse/${shelf.id}`"
+                  class="t-label -mb-2 mt-1 flex min-h-16 w-fit items-center gap-2 pr-4 text-lg underline decoration-2 underline-offset-4 hover:bg-wash active:bg-ink active:text-paper"
+                >
+                  <Warehouse
+                    class="size-6"
+                    :stroke-width="2.5"
+                  />
+                  Что ещё на этом месте
+                </NuxtLink>
               </div>
               <div class="flex items-end justify-between gap-4 border-t-[3px] border-ink px-5 py-4 sm:flex-col sm:items-end sm:justify-end sm:border-t-0 sm:border-l-[3px]">
                 <p class="t-small">
@@ -190,77 +197,54 @@ useScanner(async (code) => {
         </div>
       </article>
 
-      <Teleport to="body">
-        <div
-          v-if="photoOpen"
-          class="fixed inset-0 z-50 flex flex-col bg-ink text-paper"
-          role="dialog"
-          aria-modal="true"
-          :aria-label="`Фото: ${item.name}`"
-          @click="photoOpen = false"
-        >
-          <div class="flex items-center gap-4 px-4 py-3 sm:px-8">
-            <p class="t-label min-w-0 flex-1 truncate text-2xl">
-              {{ item.name }}
-            </p>
-            <button
-              type="button"
-              class="t-label flex h-16 items-center gap-2 border-[3px] border-paper px-5 text-xl hover:bg-paper hover:text-ink focus-visible:outline-paper"
-              autofocus
-              @click="photoOpen = false"
-            >
-              <X
-                class="size-6"
-                :stroke-width="2.5"
-              />
-              Закрыть
-            </button>
-          </div>
-          <ItemPhoto
-            :item="item"
-            size="full"
-            class="min-h-0 w-full flex-1 bg-ink object-contain px-4 pb-4 sm:px-8 sm:pb-8"
-          />
-        </div>
-      </Teleport>
+      <PhotoViewer
+        v-if="photoOpen"
+        :item="item"
+        @close="photoOpen = false"
+      />
 
-      <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
-        <Button
-          as-child
-          size="touch"
-          class="h-24 text-3xl"
-        >
-          <NuxtLink :to="`/item/${item.id}/move`">
-            <ArrowRightLeft class="size-8" />
-            Переместить
-          </NuxtLink>
-        </Button>
-        <Button
-          v-if="!cart.has(item.id)"
-          variant="outline"
-          size="touch"
-          class="h-24 text-2xl sm:min-w-72"
-          @click="addToCart(item)"
-        >
-          <ShoppingBasket class="size-7" />
-          В корзину
-        </Button>
-        <Button
-          v-else
-          as-child
-          variant="outline"
-          size="touch"
-          class="h-24 text-2xl sm:min-w-72"
-        >
-          <NuxtLink to="/cart">
-            <Check class="size-7" />
-            В корзине · открыть
-          </NuxtLink>
-        </Button>
-      </div>
-      <p class="text-lg text-ink-soft">
-        Можно сразу отсканировать этикетку полки — откроется перемещение на неё.
-      </p>
+      <!-- The two things to do with a card stay at the bottom edge, whatever the name and the photo take. -->
+      <ConfirmBar>
+        <p class="text-base text-ink-soft sm:text-lg">
+          Или отсканируйте этикетку полки — сразу откроется перемещение.
+        </p>
+        <template #action>
+          <div class="grid grid-cols-[3fr_2fr] gap-3 lg:flex">
+            <Button
+              as-child
+              size="touch"
+              class="h-20 text-2xl sm:text-3xl lg:min-w-80"
+            >
+              <NuxtLink :to="`/item/${item.id}/move`">
+                <ArrowRightLeft class="size-8" />
+                Переместить
+              </NuxtLink>
+            </Button>
+            <Button
+              v-if="!cart.has(item.id)"
+              variant="outline"
+              size="touch"
+              class="h-20 text-xl sm:text-2xl lg:min-w-64"
+              @click="addToCart(item)"
+            >
+              <ShoppingBasket class="size-7" />
+              В корзину
+            </Button>
+            <Button
+              v-else
+              as-child
+              variant="outline"
+              size="touch"
+              class="h-20 text-xl whitespace-normal sm:text-2xl lg:min-w-64"
+            >
+              <NuxtLink to="/cart">
+                <Check class="size-7" />
+                В корзине · открыть
+              </NuxtLink>
+            </Button>
+          </div>
+        </template>
+      </ConfirmBar>
     </template>
   </div>
 </template>

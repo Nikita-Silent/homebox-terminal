@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ItemSearchResult, ItemSummary } from '#shared/types/terminal'
-import { Camera, List, Search } from '@lucide/vue'
+import { Camera, List, LoaderCircle, Search, X } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,6 +89,21 @@ async function resolveCode(code: string) {
 
 useScanner(resolveCode)
 
+/** The field's own clear key: a gloved finger cannot select the text to erase it. */
+function clearQuery() {
+  clearTimeout(searchTimer)
+  searchSeq++
+  query.value = ''
+  results.value = null
+  error.value = null
+  loading.value = false
+  router.replace({ query: {} })
+  input.value?.focus()
+}
+
+/** While a query is typed the screen belongs to its results: the title and the tour step aside. */
+const idle = computed(() => !query.value.trim() && !results.value)
+
 function submit() {
   const text = query.value.trim()
   if (!text) return
@@ -104,50 +119,71 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col gap-8 short:gap-6">
-    <h1 class="t-label max-w-4xl text-4xl sm:text-6xl short:sm:text-5xl">
+    <h1
+      class="t-label max-w-4xl text-4xl sm:text-6xl short:sm:text-5xl"
+      :class="!idle && 'sr-only'"
+    >
       Отсканируйте этикетку или найдите оборудование
     </h1>
 
     <form
-      class="flex flex-col gap-3 lg:flex-row"
+      class="flex gap-3"
       role="search"
       @submit.prevent="submit"
     >
-      <label class="sr-only" for="search">Название, модель, серийный номер или UID</label>
-      <input
-        id="search"
-        ref="input"
-        v-model="query"
-        type="search"
-        inputmode="search"
-        autocomplete="off"
-        enterkeyhint="search"
-        placeholder="Название, модель, серийный номер или UID"
-        class="frame h-20 w-full min-w-0 bg-paper px-5 lg:flex-1 text-2xl font-semibold placeholder:font-normal placeholder:text-ink-soft focus:outline-none focus-visible:outline-[4px] focus-visible:outline-offset-3 focus-visible:outline-ink"
-      >
-      <div class="grid grid-cols-2 gap-3 lg:flex">
-        <Button
-          type="submit"
-          size="touch"
-          class="h-20"
+      <div class="frame flex h-20 min-w-0 flex-1 items-stretch bg-paper focus-within:outline-[4px] focus-within:outline-offset-3 focus-within:outline-ink">
+        <label
+          class="sr-only"
+          for="search"
+        >Название, модель, серийный номер или UID</label>
+        <input
+          id="search"
+          ref="input"
+          v-model="query"
+          type="search"
+          inputmode="search"
+          autocomplete="off"
+          enterkeyhint="search"
+          placeholder="Название, модель, серийный номер или UID"
+          class="h-full w-full min-w-0 flex-1 bg-transparent px-5 text-2xl font-semibold placeholder:font-normal placeholder:text-ink-soft focus:outline-none"
         >
-          <Search />
-          Найти
-        </Button>
-        <Button
+        <button
+          v-if="query"
           type="button"
-          size="touch"
-          variant="outline"
-          class="h-20"
-          @click="cameraOpen = true"
+          class="flex w-20 shrink-0 items-center justify-center border-l-[3px] border-ink hover:bg-wash active:bg-ink active:text-paper"
+          aria-label="Очистить поиск"
+          @click="clearQuery"
         >
-          <Camera />
-          Камера
-        </Button>
+          <X
+            class="size-8"
+            :stroke-width="2.5"
+          />
+        </button>
       </div>
+      <Button
+        type="submit"
+        size="touch"
+        class="h-20 max-lg:w-20 max-lg:px-0"
+        aria-label="Найти"
+      >
+        <Search />
+        <span class="max-lg:sr-only">Найти</span>
+      </Button>
+      <Button
+        type="button"
+        size="touch"
+        variant="outline"
+        class="h-20 max-lg:w-20 max-lg:px-0"
+        aria-label="Камера"
+        @click="cameraOpen = true"
+      >
+        <Camera />
+        <span class="max-lg:sr-only">Камера</span>
+      </Button>
     </form>
 
     <Button
+      v-if="idle"
       as-child
       variant="outline"
       size="touch"
@@ -187,15 +223,37 @@ onMounted(() => {
       v-else-if="results"
       class="flex flex-col gap-3"
       :aria-busy="loading"
+      aria-label="Найденное оборудование"
     >
-      <p class="t-small">
-        {{ results.length ? `Найдено: ${results.length}` : '' }}
+      <p
+        v-if="loading"
+        class="t-small flex h-6 items-center gap-2"
+        role="status"
+      >
+        <LoaderCircle
+          class="size-5 animate-spin"
+          :stroke-width="2.5"
+        />
+        Ищем «{{ query.trim() }}»…
       </p>
-      <ItemRow
-        v-for="item in results"
-        :key="item.id"
-        :item="item"
-      />
+      <p
+        v-else
+        class="t-small flex h-6 items-center"
+      >
+        {{ results.length ? `Найдено по «${searched}»: ${results.length}` : '' }}
+      </p>
+      <!-- The old answer stays in place but cannot be tapped: it may not match what is typed now. -->
+      <div
+        class="flex flex-col gap-3 transition-opacity"
+        :class="loading && 'pointer-events-none opacity-35'"
+        :inert="loading || undefined"
+      >
+        <ItemRow
+          v-for="item in results"
+          :key="item.id"
+          :item="item"
+        />
+      </div>
       <div
         v-if="!results.length"
         class="frame unavailable p-8"
@@ -206,11 +264,22 @@ onMounted(() => {
         <p class="mt-2 text-lg">
           Проверьте написание или поищите по модели, серийному номеру или UID с этикетки (например, 000-011).
         </p>
+        <Button
+          as-child
+          variant="outline"
+          size="touch"
+          class="mt-4 h-auto min-h-16 py-2 whitespace-normal"
+        >
+          <NuxtLink to="/browse">
+            <List />
+            Выбрать из списка
+          </NuxtLink>
+        </Button>
       </div>
     </section>
 
     <ol
-      v-else
+      v-else-if="idle"
       class="grid gap-3 sm:grid-cols-3"
       aria-label="Как переместить оборудование"
     >

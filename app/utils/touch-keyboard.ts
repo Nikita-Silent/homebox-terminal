@@ -58,6 +58,19 @@ export function eraseIn(el: KeyboardField) {
   else if (start > 0) replace(el, start - 1, start, '')
 }
 
+/** ← and →: the caret moves by one character, so a typo mid-word needs no aim at the text. */
+export function moveCaret(el: KeyboardField, by: -1 | 1) {
+  const [start, end] = selection(el)
+  // A selection collapses to its edge first, as on a real keyboard.
+  const at = start !== end ? (by < 0 ? start : end) : Math.min(el.value.length, Math.max(0, start + by))
+  try {
+    el.setSelectionRange(at, at)
+  }
+  catch {
+    // No selection API for this type: nothing to move.
+  }
+}
+
 export function clearField(el: KeyboardField) {
   if (el.value) replace(el, 0, el.value.length, '')
 }

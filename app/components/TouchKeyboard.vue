@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ArrowBigUp, ChevronDown, CornerDownLeft, Delete, Search, X } from '@lucide/vue'
+import { ArrowBigUp, ChevronDown, ChevronLeft, ChevronRight, CornerDownLeft, Delete, Search, X } from '@lucide/vue'
 import { cn } from '~/lib/utils'
 import type { KeyboardField, KeyboardLayout } from '~/utils/touch-keyboard'
+import { moveCaret } from '~/utils/touch-keyboard'
 
 /**
  * On-screen keyboard for the touch terminal. Opens when a text field is tapped (or clicked) and
@@ -12,6 +13,11 @@ import type { KeyboardField, KeyboardLayout } from '~/utils/touch-keyboard'
 const field = shallowRef<KeyboardField | null>(null)
 /** The panel waits for the tap to finish, see `show`. */
 const shown = ref(false)
+/** Bars fixed to the bottom edge (ConfirmBar) step aside while the keyboard is up. */
+const keyboardOpen = useState('touch-keyboard:open', () => false)
+watch(shown, (value) => {
+  keyboardOpen.value = value
+})
 const layout = ref<KeyboardLayout>('ru')
 const shift = ref(false)
 const panel = ref<HTMLElement | null>(null)
@@ -86,6 +92,11 @@ function clear() {
   if (el) clearField(el)
 }
 
+function caret(by: -1 | 1) {
+  const el = current()
+  if (el) moveCaret(el, by)
+}
+
 function enter() {
   const el = current()
   if (!el) return
@@ -139,24 +150,37 @@ onBeforeUnmount(() => {
   observer?.disconnect()
 })
 
-// Room below the page so the keyboard never covers the field being typed into. A covered field
-// goes up to just under the rail, leaving the most room for what it filters below it.
+/** A search or filter field: what it finds appears below it and must stay in view while typing. */
+function filtersBelow(el: KeyboardField) {
+  return el.type === 'search' || el.getAttribute('enterkeyhint') === 'search'
+}
+
+// Room below the page so the keyboard never covers the field being typed into. A covered field,
+// and any search field, goes up to just under the rail (or a sticky bar it sits under), leaving the
+// most room for the results below it.
 watch(panel, (el) => {
   observer?.disconnect()
   height.value = 0
   if (!el) return
   observer = new ResizeObserver(() => {
     height.value = el.offsetHeight
-    const target = field.value?.getBoundingClientRect()
+    const input = field.value
+    const target = input?.getBoundingClientRect()
     const top = el.getBoundingClientRect().top
-    if (!target || target.bottom <= top - 16) return
+    if (!input || !target) return
+    // A field in a sticky bar is already where it can be.
+    if (input.closest('[data-sticky-filter]')) return
+    if (target.bottom <= top - 16 && !filtersBelow(input)) return
     const rail = document.querySelector('[data-app-rail]')?.getBoundingClientRect().bottom ?? 0
-    window.scrollBy({ top: target.top - rail - 16 })
+    const lift = target.top - rail - 16
+    if (Math.abs(lift) > 8) window.scrollBy({ top: lift })
   })
   observer.observe(el)
 })
 
 const keyClass = 'frame flex h-16 short:h-[64px] min-w-0 flex-1 items-center justify-center bg-paper select-none hover:bg-wash active:bg-ink active:text-paper'
+/** On a wide screen the digits stand to the right as a pad: one row less of height. */
+const NUMPAD = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '-', '0']
 /** Enter and a held Shift: inverted, like the primary button. */
 const inkKey = 'bg-ink text-paper hover:bg-ink-soft active:bg-paper active:text-ink'
 </script>
@@ -233,11 +257,139 @@ const inkKey = 'bg-ink text-paper hover:bg-ink-soft active:bg-paper active:text-
 
     <div
       v-else
-      class="mx-auto flex max-w-[1280px] flex-col gap-2"
+      class="mx-auto flex max-w-[1280px] gap-1 sm:gap-2 xl:gap-5"
     >
-      <div class="flex gap-2">
+      <div class="flex min-w-0 flex-1 flex-col gap-1 sm:gap-2">
+        <div class="flex gap-1 sm:gap-2 xl:hidden">
+          <button
+            v-for="key in [...DIGITS, '-']"
+            :key="key"
+            type="button"
+            :class="[keyClass, 't-num text-2xl sm:text-3xl']"
+            @click="press(key)"
+          >
+            {{ key }}
+          </button>
+          <button
+            type="button"
+            :class="[keyClass, 'flex-[1.5]']"
+            aria-label="Стереть"
+            @click="erase"
+          >
+            <Delete
+              class="size-8"
+              :stroke-width="2.5"
+            />
+          </button>
+        </div>
+        <div
+          v-for="(row, i) in letters"
+          :key="i"
+          class="flex gap-1 sm:gap-2"
+        >
+          <button
+            v-for="key in row"
+            :key="key"
+            type="button"
+            :class="[keyClass, 'text-2xl font-semibold sm:text-3xl']"
+            @click="press(key)"
+          >
+            {{ key }}
+          </button>
+        </div>
+        <div class="flex gap-1 sm:gap-2">
+          <button
+            type="button"
+            :class="cn(keyClass, shift && inkKey)"
+            :aria-pressed="shift"
+            aria-label="Заглавная буква"
+            @click="shift = !shift"
+          >
+            <ArrowBigUp
+              class="size-8"
+              :stroke-width="2.5"
+            />
+          </button>
+          <button
+            type="button"
+            :class="[keyClass, 't-label text-lg sm:text-xl']"
+            @click="layout = layout === 'ru' ? 'en' : 'ru'"
+          >
+            {{ layout === 'ru' ? 'ENG' : 'РУС' }}
+          </button>
+          <button
+            type="button"
+            :class="keyClass"
+            aria-label="Курсор влево"
+            @click="caret(-1)"
+          >
+            <ChevronLeft
+              class="size-8"
+              :stroke-width="3"
+            />
+          </button>
+          <button
+            type="button"
+            :class="[keyClass, 't-label flex-[3] text-xl']"
+            @click="press(' ')"
+          >
+            Пробел
+          </button>
+          <button
+            type="button"
+            :class="keyClass"
+            aria-label="Курсор вправо"
+            @click="caret(1)"
+          >
+            <ChevronRight
+              class="size-8"
+              :stroke-width="3"
+            />
+          </button>
+          <button
+            type="button"
+            :class="[keyClass, 't-label flex-[1.5] gap-2 text-lg sm:text-xl']"
+            @click="clear"
+          >
+            <X
+              class="size-6 max-sm:hidden"
+              :stroke-width="2.5"
+            />
+            Всё
+          </button>
+          <button
+            type="button"
+            :class="[keyClass, 't-label flex-[1.5] gap-2 text-lg sm:text-xl']"
+            aria-label="Скрыть клавиатуру"
+            @click="close({ blur: true })"
+          >
+            <ChevronDown
+              class="size-6"
+              :stroke-width="2.5"
+            />
+            <span class="max-sm:sr-only">Скрыть</span>
+          </button>
+          <button
+            type="button"
+            :class="cn(keyClass, inkKey, 't-label flex-[2] gap-2 text-lg sm:text-xl')"
+            @click="enter"
+          >
+            <component
+              :is="enterLabel === 'Найти' ? Search : CornerDownLeft"
+              class="size-6 max-sm:hidden"
+              :stroke-width="2.5"
+            />
+            {{ enterLabel }}
+          </button>
+        </div>
+      </div>
+      <div
+        class="hidden w-64 shrink-0 grid-cols-3 gap-2 xl:grid"
+        role="group"
+        aria-label="Цифры"
+      >
         <button
-          v-for="key in [...DIGITS, '-']"
+          v-for="key in NUMPAD"
           :key="key"
           type="button"
           :class="[keyClass, 't-num text-3xl']"
@@ -247,7 +399,7 @@ const inkKey = 'bg-ink text-paper hover:bg-ink-soft active:bg-paper active:text-
         </button>
         <button
           type="button"
-          :class="[keyClass, 'flex-[1.5]']"
+          :class="keyClass"
           aria-label="Стереть"
           @click="erase"
         >
@@ -255,84 +407,6 @@ const inkKey = 'bg-ink text-paper hover:bg-ink-soft active:bg-paper active:text-
             class="size-8"
             :stroke-width="2.5"
           />
-        </button>
-      </div>
-      <div
-        v-for="(row, i) in letters"
-        :key="i"
-        class="flex gap-2"
-      >
-        <button
-          v-for="key in row"
-          :key="key"
-          type="button"
-          :class="[keyClass, 'text-3xl font-semibold']"
-          @click="press(key)"
-        >
-          {{ key }}
-        </button>
-      </div>
-      <div class="flex gap-2">
-        <button
-          type="button"
-          :class="cn(keyClass, shift && inkKey)"
-          :aria-pressed="shift"
-          aria-label="Заглавная буква"
-          @click="shift = !shift"
-        >
-          <ArrowBigUp
-            class="size-8"
-            :stroke-width="2.5"
-          />
-        </button>
-        <button
-          type="button"
-          :class="[keyClass, 't-label text-xl']"
-          @click="layout = layout === 'ru' ? 'en' : 'ru'"
-        >
-          {{ layout === 'ru' ? 'ENG' : 'РУС' }}
-        </button>
-        <button
-          type="button"
-          :class="[keyClass, 't-label flex-[4] text-xl']"
-          @click="press(' ')"
-        >
-          Пробел
-        </button>
-        <button
-          type="button"
-          :class="[keyClass, 't-label flex-[1.5] gap-2 text-xl']"
-          @click="clear"
-        >
-          <X
-            class="size-6"
-            :stroke-width="2.5"
-          />
-          Всё
-        </button>
-        <button
-          type="button"
-          :class="[keyClass, 't-label flex-[1.5] gap-2 text-xl']"
-          aria-label="Скрыть клавиатуру"
-          @click="close({ blur: true })"
-        >
-          <ChevronDown
-            class="size-6"
-            :stroke-width="2.5"
-          />
-          Скрыть
-        </button>
-        <button
-          type="button"
-          :class="cn(keyClass, inkKey, 't-label flex-[2] gap-2 text-xl')"
-          @click="enter"
-        >
-          <component
-            :is="enterLabel === 'Найти' ? Search : CornerDownLeft"
-            class="size-6"
-            :stroke-width="2.5"
-          />
-          {{ enterLabel }}
         </button>
       </div>
     </div>

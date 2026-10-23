@@ -47,6 +47,7 @@ test.describe('sign-in', () => {
     const name = uniq('Мария')
     await signIn(page, ADMIN)
     await page.getByRole('link', { name: 'Сотрудники' }).click()
+    await page.getByRole('button', { name: 'Новый сотрудник' }).click()
     await page.getByPlaceholder('Как в журнале').fill(name)
     await page.getByPlaceholder('4–8 цифр').fill('5093')
     await page.getByRole('button', { name: 'Добавить' }).click()
@@ -56,6 +57,8 @@ test.describe('sign-in', () => {
     await signIn(other, { name, pin: '5093' })
 
     await page.locator('article', { hasText: name }).getByRole('button', { name: 'Отключить' }).click()
+    // A stray tap only asks; the second, deliberate one switches the employee off.
+    await page.locator('article', { hasText: name }).getByRole('button', { name: 'Да, отключить' }).click()
     await expect(page.locator('article', { hasText: name })).toContainText('отключён')
 
     await other.goto('/browse')

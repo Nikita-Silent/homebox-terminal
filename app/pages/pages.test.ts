@@ -199,9 +199,37 @@ describe('cart page', () => {
     expect(page.text()).toContain('уже находится в этой локации')
     expect(page.text()).toContain('Проверьте строк: 1')
     expect(moveButton(page).attributes('disabled')).toBeDefined()
+    // The bar leads to the line that needs a look.
+    await page.findAll('button').find(b => b.text().includes('Проверьте строк: 1'))!.trigger('click')
+    await settle(0)
+    expect(page.find('#line-a').classes()).toContain('outline-ink')
     await page.find('[aria-label="Убрать «Item a» из корзины"]').trigger('click')
     await settle()
     expect(moveButton(page).attributes('disabled')).toBeUndefined()
+  })
+
+  it('takes back a removal or a clearing with «Вернуть», quantities included', async () => {
+    useCart().add(item('a'))
+    useCart().add(item('b', 40))
+    useCart().lines.value[1]!.quantity = 7
+    const page = await mountSuspended(CartPage)
+    await settle()
+    await page.find('[aria-label="Убрать «Item a» из корзины"]').trigger('click')
+    expect(page.text()).toContain('Убрано: «Item a»')
+    await page.findAll('button').find(b => b.text().includes('Очистить'))!.trigger('click')
+    expect(useCart().count.value).toBe(0)
+    await page.findAll('button').find(b => b.text().includes('Вернуть'))!.trigger('click')
+    expect(useCart().lines.value.map(l => [l.item.id, l.quantity])).toEqual([['a', 1], ['b', 7]])
+    expect(page.findAll('button').some(b => b.text().includes('Вернуть'))).toBe(false)
+  })
+
+  it('keeps every line one row: the quantity opens on its own key', async () => {
+    useCart().add(item('b', 40))
+    const page = await mountSuspended(CartPage)
+    await settle()
+    expect(page.find('input[inputmode="numeric"]').exists()).toBe(false)
+    await page.find('[aria-label^="Количество «Item b»"]').trigger('click')
+    expect(page.find('input[inputmode="numeric"]').exists()).toBe(true)
   })
 
   it('moves lines one by one, each once, and empties the cart', async () => {
@@ -231,6 +259,27 @@ describe('cart page', () => {
     expect(useCart().lines.value.map(l => l.item.id)).toEqual(['a'])
     expect(page.text()).toContain('Перемещено 1 из 2. Не перемещено: «Item a» — Количество изменилось')
     expect(page.text()).toContain('Перемещено: 1')
+  })
+
+  it('reports what really happened: an unfinished move is not counted as moved', async () => {
+    registerEndpoint('/api/transfers', {
+      method: 'POST',
+      handler: async (event) => {
+        const body = await readBody(event)
+        const status = body.itemId === 'a' ? 'done' : 'needs_attention'
+        return { opId: body.opId, status, kind: 'split', quantity: body.quantity, source: { id: body.itemId, name: `Item ${body.itemId}` }, target: { location: shelf2, assetId: '' }, sourceRemoved: false, actor: staff, createdAt: '', message: null } as unknown as TransferResult
+      },
+    })
+    useCart().add(item('a'))
+    useCart().add(item('b', 40))
+    const page = await mountSuspended(CartPage)
+    scan('SHELF2')
+    await settle()
+    await moveButton(page).trigger('click')
+    await settle()
+    expect(page.find('section[aria-label="Перемещено"]').text()).toContain('Перемещено: 1')
+    expect(page.find('section[aria-label="Перемещено"]').text()).not.toContain('Item b')
+    expect(page.find('section[aria-label="Нужна проверка"]').text()).toContain('Item b')
   })
 })
 

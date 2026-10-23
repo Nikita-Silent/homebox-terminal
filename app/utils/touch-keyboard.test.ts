@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearField, eraseIn, isKeyboardField, layoutFor, pressEnter, typeInto } from './touch-keyboard'
+import { clearField, eraseIn, isKeyboardField, layoutFor, moveCaret, pressEnter, typeInto } from './touch-keyboard'
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -76,5 +76,20 @@ describe('touch keyboard typing', () => {
     el.addEventListener('keydown', e => e.key === 'Enter' && e.preventDefault())
     pressEnter(el)
     expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('moves the caret by one character, collapsing a selection to its edge first', () => {
+    const el = field('<input value="кабль">')
+    el.setSelectionRange(4, 4)
+    moveCaret(el, -1)
+    expect(el.selectionStart).toBe(3)
+    typeInto(el, 'е')
+    expect(el.value).toBe('кабель')
+    el.setSelectionRange(0, 0)
+    moveCaret(el, -1)
+    expect(el.selectionStart).toBe(0)
+    el.setSelectionRange(1, 4)
+    moveCaret(el, 1)
+    expect([el.selectionStart, el.selectionEnd]).toEqual([4, 4])
   })
 })

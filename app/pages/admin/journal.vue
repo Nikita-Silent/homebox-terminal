@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { JournalEntry, JournalPage } from '#shared/types/terminal'
-import { ArrowRight, RefreshCw, Search } from '@lucide/vue'
+import { ArrowRight, ArrowUp, LoaderCircle, RefreshCw, RotateCcw } from '@lucide/vue'
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom'
 
@@ -148,6 +148,37 @@ const STATUS_LABEL: Record<string, string> = {
   needs_attention: 'Нужна проверка',
 }
 
+const filtered = computed(() => period.value !== 'week' || !!userId.value || !!search.value.trim())
+
+function resetFilters() {
+  period.value = 'week'
+  userId.value = ''
+  search.value = ''
+}
+
+/** What the list is filtered by, for the bar that stays in view while scrolling the history. */
+const summary = computed(() => {
+  const parts: string[] = []
+  if (period.value === 'custom' && range.value) {
+    const short = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' })
+    parts.push(`${short.format(range.value.from)} – ${short.format(addDays(range.value.to, -1))}`)
+  }
+  else {
+    parts.push(PERIODS.find(p => p.id === period.value)?.label ?? '')
+  }
+  const actor = page.value?.actors.find(a => a.id === userId.value)
+  if (actor) parts.push(actor.name)
+  if (debouncedSearch.value.trim()) parts.push(`«${debouncedSearch.value.trim()}»`)
+  return parts.join(' · ')
+})
+
+const toTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+
+const chipClass = (on: boolean) => [
+  't-label frame h-16 px-4 text-xl',
+  on ? 'bg-ink text-paper' : 'bg-paper hover:bg-wash active:bg-ink active:text-paper',
+]
+
 const customInvalid = computed(() => period.value === 'custom' && !range.value)
 </script>
 
@@ -172,78 +203,54 @@ const customInvalid = computed(() => period.value === 'custom' && !range.value)
           type="button"
           role="radio"
           :aria-checked="period === p.id"
-          class="t-label frame h-14 px-4 text-xl"
-          :class="period === p.id ? 'bg-ink text-paper' : 'bg-paper hover:bg-wash active:bg-ink active:text-paper'"
+          :class="chipClass(period === p.id)"
           @click="choosePeriod(p.id)"
         >
           {{ p.label }}
         </button>
       </div>
 
-      <div
+      <RangeCalendar
         v-if="period === 'custom'"
-        class="grid gap-3 sm:grid-cols-2"
+        v-model:from="fromDate"
+        v-model:to="toDate"
+        class="max-w-xl"
+        :max="todayIso"
+      />
+
+      <div
+        v-if="page?.actors.length"
+        class="flex flex-wrap gap-2"
+        role="radiogroup"
+        aria-label="Сотрудник"
       >
-        <label class="frame flex flex-col bg-paper px-4 py-2">
-          <span class="t-small">С</span>
-          <input
-            v-model="fromDate"
-            type="date"
-            :max="toDate || todayIso"
-            class="h-10 bg-transparent text-xl font-semibold focus:outline-none"
-          >
-        </label>
-        <label class="frame flex flex-col bg-paper px-4 py-2">
-          <span class="t-small">По</span>
-          <input
-            v-model="toDate"
-            type="date"
-            :min="fromDate"
-            :max="todayIso"
-            class="h-10 bg-transparent text-xl font-semibold focus:outline-none"
-          >
-        </label>
+        <button
+          type="button"
+          role="radio"
+          :aria-checked="!userId"
+          :class="chipClass(!userId)"
+          @click="userId = ''"
+        >
+          Все сотрудники
+        </button>
+        <button
+          v-for="actor in page.actors"
+          :key="actor.id"
+          type="button"
+          role="radio"
+          :aria-checked="userId === actor.id"
+          :class="chipClass(userId === actor.id)"
+          @click="userId = actor.id"
+        >
+          {{ actor.name }}
+        </button>
       </div>
 
-      <div class="grid gap-3 lg:grid-cols-[minmax(0,20rem)_1fr]">
-        <label class="frame flex flex-col bg-paper px-4 py-2">
-          <span class="t-small">Сотрудник</span>
-          <select
-            v-model="userId"
-            class="h-10 min-w-0 bg-transparent text-xl font-semibold focus:outline-none"
-          >
-            <option value="">
-              Все сотрудники
-            </option>
-            <option
-              v-for="actor in page?.actors ?? []"
-              :key="actor.id"
-              :value="actor.id"
-            >
-              {{ actor.name }}
-            </option>
-          </select>
-        </label>
-        <div class="frame flex items-center gap-3 bg-paper px-4">
-          <Search
-            class="size-6 shrink-0"
-            :stroke-width="2.5"
-            aria-hidden="true"
-          />
-          <label
-            class="sr-only"
-            for="journal-search"
-          >Оборудование, UID или место</label>
-          <input
-            id="journal-search"
-            v-model="search"
-            type="search"
-            autocomplete="off"
-            placeholder="Оборудование, UID или место"
-            class="h-16 min-w-0 flex-1 bg-transparent text-xl font-semibold placeholder:font-normal placeholder:text-ink-soft focus:outline-none"
-          >
-        </div>
-      </div>
+      <FilterField
+        id="journal-search"
+        v-model="search"
+        label="Оборудование, UID или место"
+      />
     </section>
 
     <StatusStrip
@@ -276,25 +283,59 @@ const customInvalid = computed(() => period.value === 'custom' && !range.value)
     />
 
     <template v-else>
+      <!-- Stays under the rail while the history scrolls: what is shown, and the way back to the filters. -->
       <div
-        class="frame grid grid-cols-2 bg-paper"
+        class="frame sticky top-16 z-20 flex flex-wrap items-stretch bg-paper"
         :aria-busy="loading"
       >
-        <div class="px-5 py-3">
+        <div class="px-5 py-2">
           <p class="t-small">
             Операций
           </p>
-          <p class="t-num text-5xl">
+          <p class="t-num text-4xl">
             {{ page.total }}
           </p>
         </div>
-        <div class="border-l-[3px] border-ink px-5 py-3">
+        <div class="border-l-[3px] border-ink px-5 py-2">
           <p class="t-small">
             Перемещено
           </p>
-          <p class="t-num text-5xl">
+          <p class="t-num text-4xl">
             {{ page.totalQuantity }}<span class="t-label ml-2 text-xl">шт.</span>
           </p>
+        </div>
+        <div class="flex min-w-48 flex-1 items-center gap-2 border-l-[3px] border-ink px-5 py-2 text-lg font-semibold">
+          <LoaderCircle
+            v-if="loading"
+            class="size-6 shrink-0 animate-spin"
+            :stroke-width="2.5"
+          />
+          <span class="min-w-0 break-words">{{ loading ? 'Обновляем…' : summary }}</span>
+        </div>
+        <div class="flex border-l-[3px] border-ink">
+          <button
+            type="button"
+            class="t-label flex min-h-16 items-center gap-2 px-4 text-lg hover:bg-wash active:bg-ink active:text-paper"
+            @click="toTop"
+          >
+            <ArrowUp
+              class="size-6"
+              :stroke-width="2.5"
+            />
+            Отбор
+          </button>
+          <button
+            v-if="filtered"
+            type="button"
+            class="t-label flex min-h-16 items-center gap-2 border-l-[3px] border-ink px-4 text-lg hover:bg-wash active:bg-ink active:text-paper"
+            @click="resetFilters"
+          >
+            <RotateCcw
+              class="size-6"
+              :stroke-width="2.5"
+            />
+            Сбросить
+          </button>
         </div>
       </div>
 
@@ -308,12 +349,24 @@ const customInvalid = computed(() => period.value === 'custom' && !range.value)
         <p class="mt-2 text-lg">
           Выберите другой период или снимите отбор по сотруднику и поиску.
         </p>
+        <Button
+          v-if="filtered"
+          variant="outline"
+          size="touch"
+          class="mt-4"
+          @click="resetFilters"
+        >
+          <RotateCcw />
+          Сбросить отбор
+        </Button>
       </div>
 
+      <!-- Old entries stay in place while new ones load, faded and out of reach of a tap. -->
       <section
         v-for="day in days"
         :key="day.key"
-        class="flex flex-col gap-3"
+        class="flex flex-col gap-3 transition-opacity"
+        :class="loading && 'pointer-events-none opacity-35'"
         :aria-label="day.title"
       >
         <h2 class="t-label pt-2 text-2xl first-letter:uppercase">

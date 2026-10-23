@@ -1,4 +1,5 @@
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { admin, item, signInAs, staff, tree } from '~/test/fixtures'
@@ -52,6 +53,16 @@ describe('ItemRow', () => {
     const wrapper = await mountSuspended(ItemRow, { props: { item: item('7', 1, { hasImage: true, imageId: 'x' }) } })
     expect(wrapper.find('img').attributes('src')).toContain('size=thumb')
   })
+
+  it('names the warehouse and the room, not just a shelf that repeats everywhere', async () => {
+    registerEndpoint('/api/locations/tree', () => tree)
+    useLocationTree().tree.value = null
+    const wrapper = await mountSuspended(ItemRow, { props: { item: item('7') } })
+    await flushPromises()
+    expect(wrapper.find('[data-place]').text().replace(/\s+/g, ' ')).toBe('Склад 1 / Помещение А / Полка 01')
+    const inPlace = await mountSuspended(ItemRow, { props: { item: item('7'), place: false } })
+    expect(inPlace.find('[data-place]').exists()).toBe(false)
+  })
 })
 
 describe('QuantityStepper', () => {
@@ -80,16 +91,45 @@ describe('QuantityStepper', () => {
     expect(all.text()).toContain('Все 3 шт.')
   })
 
-  it('clamps typed values and restores a valid number on blur', async () => {
+  it('clamps typed values at once, says so, and restores a valid number on blur', async () => {
     const { wrapper, updates } = await mount(2, 10)
     const input = wrapper.find('input')
     await input.setValue('25')
     expect(updates.at(-1)).toBe(10)
+    // The field shows what will move, not what was typed.
+    expect((input.element as HTMLInputElement).value).toBe('10')
+    expect(wrapper.text()).toContain('Больше нет: здесь всего 10 шт.')
     await input.setValue('0')
     expect(updates.at(-1)).toBe(1)
+    expect(wrapper.text()).not.toContain('Больше нет')
     await input.setValue('abc')
     await input.trigger('blur')
     expect((input.element as HTMLInputElement).value).toBe('1')
+  })
+
+  it('repeats a held key, faster and on round numbers the longer it is held', async () => {
+    vi.useFakeTimers()
+    try {
+      const { wrapper, updates } = await mount(1, 100)
+      const plus = wrapper.find('[aria-label="Больше"]')
+      await plus.trigger('pointerdown', { button: 0 })
+      expect(updates).toEqual([2])
+      await vi.advanceTimersByTimeAsync(450 + 110 * 6)
+      expect(updates.at(-1)).toBe(9)
+      await vi.advanceTimersByTimeAsync(110 * 3)
+      // Past the first second, steps of 5 land on round numbers.
+      expect(updates.slice(-3)).toEqual([10, 15, 20])
+      await plus.trigger('pointerup')
+      const last = updates.length
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(updates).toHaveLength(last)
+      // The click that ends a press adds nothing; one from the keyboard steps once.
+      await plus.trigger('click', { detail: 1 })
+      expect(updates).toHaveLength(last)
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 })
 
@@ -118,39 +158,58 @@ describe('LocationPicker', () => {
         void wrapper.setProps({ modelValue: v as never })
       } },
     })
-    const rows = () => wrapper.findAll('[role="treeitem"]').map(r => r.text().replace(/\s+/g, ' ').trim())
-    return { wrapper, picked, rows }
+    const rows = () => wrapper.findAll('li[data-id]').map(r => r.text().replace(/\s+/g, ' ').trim())
+    const button = (name: string) => wrapper.findAll('button').find(b => b.text().replace(/\s+/g, ' ').includes(name) || b.attributes('aria-label') === name)!
+    return { wrapper, picked, rows, button }
   }
 
-  it('shows top-level places and expands on demand', async () => {
-    const { wrapper, rows } = await mount()
-    expect(rows()).toEqual(['Склад 1', 'Склад 2'])
-    await wrapper.find('[aria-label="Развернуть Склад 1"]').trigger('click')
-    expect(rows()).toEqual(['Склад 1', 'Помещение А', 'Склад 2'])
-    await wrapper.find('[aria-label="Свернуть Склад 1"]').trigger('click')
-    expect(rows()).toEqual(['Склад 1', 'Склад 2'])
+  it('shows one level at a time: a place with places inside opens, it never gets picked by that tap', async () => {
+    const { picked, rows, button } = await mount()
+    expect(rows()).toEqual(['Склад 1Внутри: 1', 'Склад 2Внутри: 1'])
+    await button('Открыть «Склад 1»').trigger('click')
+    expect(rows()).toEqual(['Помещение АВнутри: 1'])
+    expect(picked).toEqual([])
+    await button('Открыть «Помещение А»').trigger('click')
+    expect(rows()).toEqual(['Полка 01'])
+    await button('На уровень выше').trigger('click')
+    expect(rows()).toEqual(['Помещение АВнутри: 1'])
+    await button('Все склады').trigger('click')
+    expect(rows()).toEqual(['Склад 1Внутри: 1', 'Склад 2Внутри: 1'])
   })
 
-  it('opens the way to the current place and refuses to pick it', async () => {
+  it('picks a shelf with one tap, and a room only with its own «Сюда» key', async () => {
+    const { picked, button } = await mount()
+    await button('Открыть «Склад 1»').trigger('click')
+    await button('Сюда: «Склад 1»').trigger('click')
+    expect(picked).toEqual([{ id: 'wh1', name: 'Склад 1', path: 'Склад 1' }])
+    await button('Открыть «Склад 1»').trigger('click')
+    await button('Открыть «Помещение А»').trigger('click')
+    await button('Полка 01').trigger('click')
+    expect(picked.at(-1)).toEqual({ id: 'shelf', name: 'Полка 01', path: 'Склад 1 / Помещение А / Полка 01' })
+  })
+
+  it('opens next to the current place and refuses to pick it', async () => {
     const { wrapper, picked } = await mount('shelf')
     expect(wrapper.find('[data-id="shelf"]').text()).toContain('Сейчас здесь')
-    const current = wrapper.find('[data-id="shelf"] button:last-child')
+    const current = wrapper.find('[data-id="shelf"] button')
     expect(current.attributes('disabled')).toBeDefined()
     await current.trigger('click')
     expect(picked).toEqual([])
   })
 
-  it('filters by every word over the full path, ignoring case and ё', async () => {
+  it('filters by every word over the full path, grouped by warehouse, ignoring case and ё', async () => {
     const { wrapper, picked, rows } = await mount()
     await wrapper.find('input').setValue('СКЛАД 2 полка')
-    // While filtering, each row shows its parents above the name.
-    expect(rows()).toEqual(['Склад 2Полка 02'])
+    expect(rows()).toEqual(['Полка 02'])
+    expect(wrapper.find('section[aria-label="Склад 2"]').exists()).toBe(true)
     await wrapper.find('[data-id="shelf2"] button').trigger('click')
     expect(picked).toEqual([{ id: 'shelf2', name: 'Полка 02', path: 'Склад 2 / Полка 02' }])
     await nextTick()
     expect(wrapper.text()).toContain('Куда: Склад 2')
     await wrapper.find('input').setValue('чердак')
-    expect(wrapper.text()).toContain('Нет локаций по запросу «чердак»')
+    expect(wrapper.text()).toContain('Нет мест по запросу «чердак»')
+    await wrapper.find('[aria-label="Очистить: Найти склад, помещение или полку"]').trigger('click')
+    expect((wrapper.find('input').element as HTMLInputElement).value).toBe('')
   })
 })
 
@@ -172,13 +231,14 @@ describe('AppRail', () => {
     expect(wrapper.text()).not.toContain('Журнал')
   })
 
-  it('gives staff no admin sections, and the cart only when it has lines', async () => {
+  it('gives staff no admin sections, and the cart always, with its count once it has lines', async () => {
     signInAs(staff)
     const wrapper = await mountSuspended(AppRail)
     expect(wrapper.text()).toContain('Иван Петров')
     expect(wrapper.text()).toContain('Выйти')
     expect(wrapper.find('a[href="/admin/journal"]').exists()).toBe(false)
-    expect(wrapper.find('a[href="/cart"]').exists()).toBe(false)
+    // An empty cart is still where collecting by scanner starts.
+    expect(wrapper.find('a[href="/cart"]').attributes('aria-label')).toBe('Корзина')
     useCart().add(item('1'))
     useCart().add(item('2'))
     await nextTick()

@@ -33,8 +33,17 @@ export function useCart() {
     lines.value = []
   }
 
+  /**
+   * Undo of a removal: `before` is the cart as it was. Its lines come back in their old order and
+   * with their quantities; anything scanned in since stays after them.
+   */
+  function restore(before: CartLine[]) {
+    const added = lines.value.filter(line => !before.some(b => b.item.id === line.item.id))
+    lines.value = [...before, ...added].slice(0, CART_LIMIT)
+  }
+
   const count = computed(() => lines.value.length)
   const has = (itemId: string) => lines.value.some(line => line.item.id === itemId)
 
-  return { lines, count, add, remove, clear, has }
+  return { lines, count, add, remove, clear, restore, has }
 }

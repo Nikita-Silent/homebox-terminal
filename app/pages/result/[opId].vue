@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TransferResult } from '#shared/types/terminal'
-import { ArrowRight, Check, RotateCcw, ScanBarcode } from '@lucide/vue'
+import { ArrowRight, Check, LoaderCircle, RefreshCw, RotateCcw, ScanBarcode } from '@lucide/vue'
 
 const route = useRoute()
 const opId = String(route.params.opId)
@@ -9,13 +9,18 @@ const cached = useState<TransferResult | null>(`transfer:${opId}`, () => null)
 const result = ref<TransferResult | null>(cached.value)
 const apiError = ref<ApiError | null>(null)
 
+const checking = ref(false)
 async function refresh() {
+  checking.value = true
   try {
     result.value = await $fetch<TransferResult>(`/api/transfers/${opId}`)
     apiError.value = null
   }
   catch (e) {
     if (!result.value) apiError.value = toApiError(e)
+  }
+  finally {
+    checking.value = false
   }
 }
 
@@ -64,9 +69,20 @@ const headline = computed(() => {
     <StatusStrip
       v-if="apiError"
       kind="error"
-      title="Операция не найдена"
+      :title="apiError.code === 'NOT_FOUND' ? 'Операция не найдена' : 'Не удалось загрузить операцию'"
       :message="apiError.message"
-    />
+    >
+      <Button
+        v-if="apiError.code !== 'NOT_FOUND'"
+        variant="outline"
+        size="touch"
+        class="mt-4 border-paper"
+        @click="refresh()"
+      >
+        <RefreshCw />
+        Повторить
+      </Button>
+    </StatusStrip>
 
     <template v-else-if="result">
       <!-- The confirmed move prints as a fresh label. -->
@@ -168,13 +184,62 @@ const headline = computed(() => {
           <p class="text-xl font-semibold">
             {{ result.message }}
           </p>
-          <p
-            v-if="result.status === 'needs_attention'"
-            class="mt-2 text-lg"
-          >
-            Откройте эту запись в Homebox, проверьте количество и место, при необходимости исправьте вручную.
-            Номер операции: {{ result.opId }}.
-          </p>
+          <template v-if="result.status === 'needs_attention'">
+            <p class="mt-2 text-lg">
+              Откройте записи ниже — карточки показывают, что сейчас в Homebox. Проверьте количество и место.
+              Если они не сходятся, сообщите администратору номер операции.
+            </p>
+            <p class="mt-2 text-xl font-semibold break-all">
+              Номер операции: {{ result.opId }}
+            </p>
+            <!-- Every record the operation touched opens here: no Homebox address to type on the terminal. -->
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+              <Button
+                v-if="!result.sourceRemoved"
+                as-child
+                variant="outline"
+                size="touch"
+                class="h-auto min-h-20 justify-between py-3 text-left whitespace-normal"
+              >
+                <NuxtLink :to="`/item/${result.source.id}`">
+                  <span>
+                    <span class="t-small block">Откуда · {{ pathText(result.source.path) || result.source.location?.name || 'без места' }}</span>
+                    {{ result.source.name }}
+                  </span>
+                  <ArrowRight />
+                </NuxtLink>
+              </Button>
+              <Button
+                v-if="result.target && result.target.id !== result.source.id"
+                as-child
+                variant="outline"
+                size="touch"
+                class="h-auto min-h-20 justify-between py-3 text-left whitespace-normal"
+              >
+                <NuxtLink :to="`/item/${result.target.id}`">
+                  <span>
+                    <span class="t-small block">Куда · {{ pathText(result.target.path) }}</span>
+                    {{ result.target.name }}
+                  </span>
+                  <ArrowRight />
+                </NuxtLink>
+              </Button>
+              <Button
+                variant="outline"
+                size="touch"
+                class="h-auto min-h-20 py-3"
+                :disabled="checking"
+                @click="refresh()"
+              >
+                <LoaderCircle
+                  v-if="checking"
+                  class="animate-spin"
+                />
+                <RefreshCw v-else />
+                Проверить статус ещё раз
+              </Button>
+            </div>
+          </template>
           <p
             v-else-if="result.status === 'pending'"
             class="mt-2 text-lg"

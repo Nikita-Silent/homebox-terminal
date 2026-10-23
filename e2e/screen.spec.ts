@@ -81,7 +81,7 @@ for (const screen of SCREENS) {
       for (const key of 'полка') await keyboard.getByRole('button', { name: key, exact: true }).tap()
       await expect(filter).toHaveValue('полка')
       await expectInReach(filter)
-      await expectInReach(page.getByRole('tree', { name: 'Локации' }).getByRole('treeitem').first())
+      await expectInReach(page.locator('[aria-label="Найденные места"] li button').first())
       await keyboard.getByRole('button', { name: 'Скрыть клавиатуру' }).tap()
 
       await page.getByRole('button', { name: 'Подтвердить' }).click()

@@ -17,6 +17,7 @@ test('the cart moves several items to one shelf in one go and the journal shows 
   await expect(page.getByText(`«${switchUnit.name}» уже в корзине`)).toBeVisible()
   await expect(page.getByRole('link', { name: 'Корзина: 2' })).toBeVisible()
 
+  await page.getByRole('button', { name: new RegExp(`^Количество «${name}»`) }).click()
   await page.locator('article', { hasText: name }).getByRole('button', { name: 'Больше' }).click()
   await scan(page, label.location(to.id))
   await expect(page.getByText('Запись переедет целиком')).toBeVisible()
@@ -25,7 +26,8 @@ test('the cart moves several items to one shelf in one go and the journal shows 
 
   await page.getByRole('button', { name: 'Переместить всё' }).click()
   await expect(page.getByText('Перемещено: 2')).toBeVisible()
-  await expect(page.getByRole('link', { name: /Корзина/ })).toHaveCount(0)
+  // Empty again: the rail keeps the cart, without a count.
+  await expect(page.getByRole('link', { name: 'Корзина', exact: true })).toBeVisible()
 
   expect((await hb.get(switchUnit.id)).parent?.id).toBe(to.id)
   expect((await hb.get(clips.id)).quantity).toBe(28)

@@ -2,7 +2,7 @@
 import type { ItemDetail, LocationNode, TransferInput, TransferPreview, TransferResult } from '#shared/types/terminal'
 import type { PickedLocation } from '~/components/LocationPicker.vue'
 import type { CartLine } from '~/composables/useCart'
-import { ArrowRight, Check, LoaderCircle, ScanBarcode, Search, Trash2, X } from '@lucide/vue'
+import { ArrowDown, ArrowRight, Check, LoaderCircle, Pencil, RotateCcw, ScanBarcode, Search, Trash2, X } from '@lucide/vue'
 
 /** Per-line state that is not worth persisting: it is rebuilt from Homebox whenever the cart opens. */
 interface LineState {
@@ -17,7 +17,7 @@ interface LineState {
   moving: boolean
 }
 
-const { lines, count, add, remove, clear } = useCart()
+const { lines, count, add, remove, clear, restore } = useCart()
 const { recent, remember } = useRecentLocations()
 const { data: tree } = await useFetch<LocationNode[]>('/api/locations/tree')
 
@@ -32,6 +32,42 @@ function forget(itemId: string) {
   remove(itemId)
   Reflect.deleteProperty(state, itemId)
 }
+
+// ── Undo: a stray tap on «×» or «Очистить» must not cost the whole collection ─
+
+const UNDO_MS = 10_000
+const undo = ref<{ before: CartLine[], message: string } | null>(null)
+let undoTimer: ReturnType<typeof setTimeout> | undefined
+
+function offerUndo(message: string) {
+  clearTimeout(undoTimer)
+  undoTimer = setTimeout(() => {
+    undo.value = null
+  }, UNDO_MS)
+  undo.value = { before: undo.value?.before ?? [...lines.value], message }
+}
+
+function removeLine(line: CartLine) {
+  offerUndo(`Убрано: «${line.item.name}»`)
+  forget(line.item.id)
+}
+
+function clearAll() {
+  offerUndo(`Корзина очищена: ${count.value} поз.`)
+  clear()
+  finished.value = []
+}
+
+function undoRemoval() {
+  if (!undo.value) return
+  restore(undo.value.before)
+  undo.value = null
+  clearTimeout(undoTimer)
+}
+onBeforeUnmount(() => clearTimeout(undoTimer))
+
+/** Quantity editors are opened one line at a time; closed lines are a single compact row. */
+const editing = ref<string | null>(null)
 
 function lineState(itemId: string): LineState {
   state[itemId] ??= { preview: null, error: null, loading: false, mergeIntoId: null, decided: true, opId: null, moving: false }
@@ -141,6 +177,26 @@ const blocked = computed(() => lines.value.filter((line) => {
   const s = lineState(line.item.id)
   return s.loading || !s.preview || !s.decided || !!s.error
 }))
+/** «Проверьте строк: N» leads to them: each tap goes to the next line that needs a look. */
+let blockedTurn = 0
+function showBlocked() {
+  const ids = blocked.value.map(line => line.item.id)
+  if (!ids.length) return
+  const id = ids[blockedTurn++ % ids.length]!
+  flash(id)
+}
+
+function flash(id: string) {
+  highlighted.value = id
+  setTimeout(() => {
+    if (highlighted.value === id) highlighted.value = null
+  }, 2000)
+  nextTick(() => document.getElementById(`line-${id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+}
+
+const whereSection = ref<HTMLElement | null>(null)
+const showWhere = () => whereSection.value?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+
 const canMove = computed(() => !!target.value && lines.value.length > 0 && !blocked.value.length && !moving.value)
 
 // ── Moving: one ordinary transfer per line, one after another ───────────────
@@ -188,6 +244,7 @@ async function moveAll() {
   }
 
   moving.value = false
+  undo.value = null
   finished.value = done
   if (done.length) remember({ id: place.id, name: place.name, path: place.path })
   if (lines.value.length) {
@@ -195,7 +252,8 @@ async function moveAll() {
     // What failed is re-read and re-checked, so the employee sees today's numbers before retrying.
     await refreshItems()
     await previewAll()
-    notice.value = `Перемещено ${done.length} из ${done.length + reasons.length}. Не перемещено: ${reasons.join('; ')}`
+    const moved = done.filter(r => r.status === 'done').length
+    notice.value = `Перемещено ${moved} из ${done.length + reasons.length}. Не перемещено: ${reasons.join('; ')}`
   }
 }
 
@@ -215,11 +273,7 @@ useScanner(async (code) => {
       const result = add(item)
       finished.value = []
       if (result === 'full') notice.value = `В корзине уже ${CART_LIMIT} позиций — переместите их, потом добавляйте ещё`
-      highlighted.value = item.id
-      setTimeout(() => {
-        if (highlighted.value === item.id) highlighted.value = null
-      }, 2000)
-      nextTick(() => document.getElementById(`line-${item.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+      flash(item.id)
       if (result === 'exists') notice.value = `«${item.name}» уже в корзине`
       return
     }
@@ -233,6 +287,16 @@ useScanner(async (code) => {
 })
 
 const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0, -1).join(' / ')
+
+/** The outcome of a run, by what really happened: only `done` is moved. */
+const FINISHED = [
+  { status: 'done', title: 'Перемещено', header: 'bg-ink text-paper' },
+  { status: 'pending', title: 'Завершается', header: 'hatch-pending border-b-[3px] border-ink' },
+  { status: 'needs_attention', title: 'Нужна проверка', header: 'hatch-attention border-b-[3px] border-ink' },
+] as const
+const finishedGroups = computed(() => FINISHED
+  .map(group => ({ ...group, results: finished.value.filter(r => r.status === group.status) }))
+  .filter(group => group.results.length))
 </script>
 
 <template>
@@ -241,15 +305,49 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
       <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
         Корзина
       </h1>
-      <Button
+      <div
         v-if="count && !moving"
-        variant="outline"
-        size="touch"
-        @click="clear(); finished = []"
+        class="flex flex-wrap gap-3"
       >
-        <Trash2 />
-        Очистить
-      </Button>
+        <Button
+          as-child
+          variant="outline"
+          size="touch"
+        >
+          <NuxtLink to="/">
+            <Search />
+            Добавить через поиск
+          </NuxtLink>
+        </Button>
+        <Button
+          variant="outline"
+          size="touch"
+          @click="clearAll"
+        >
+          <Trash2 />
+          Очистить
+        </Button>
+      </div>
+    </div>
+
+    <!-- Under the rail, so it is in reach wherever the removal happened. -->
+    <div
+      v-if="undo"
+      class="frame sticky top-16 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 bg-ink py-2 pr-2 pl-5 text-paper"
+      role="status"
+    >
+      <span class="min-w-0 flex-1 text-lg font-semibold break-words">{{ undo.message }}</span>
+      <button
+        type="button"
+        class="t-label flex h-16 items-center gap-2 border-[3px] border-paper px-5 text-xl hover:bg-paper hover:text-ink active:bg-paper active:text-ink focus-visible:outline-paper"
+        @click="undoRemoval"
+      >
+        <RotateCcw
+          class="size-6"
+          :stroke-width="2.5"
+        />
+        Вернуть
+      </button>
     </div>
 
     <p class="flex items-center gap-3 text-lg font-medium">
@@ -267,30 +365,53 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
     />
 
     <section
-      v-if="finished.length"
+      v-for="group in finishedGroups"
+      :key="group.status"
       class="frame bg-paper"
-      aria-label="Перемещено"
+      :aria-label="group.title"
     >
-      <p class="flex items-center gap-3 bg-ink px-5 py-3 text-paper">
-        <Check
-          class="size-8"
-          :stroke-width="3.5"
-        />
-        <span class="t-label text-3xl">Перемещено: {{ finished.length }}</span>
+      <p
+        class="flex items-center gap-3 px-5 py-3"
+        :class="group.header"
+      >
+        <span
+          class="t-label flex items-center gap-3 text-3xl"
+          :class="group.status !== 'done' && 'frame bg-paper px-3 py-1'"
+        >
+          <Check
+            v-if="group.status === 'done'"
+            class="size-8"
+            :stroke-width="3.5"
+          />
+          {{ group.title }}: {{ group.results.length }}
+        </span>
+      </p>
+      <p
+        v-if="group.status === 'needs_attention'"
+        class="rule-thin px-5 py-3 text-lg"
+      >
+        Откройте каждую строку: там видно, что проверить в Homebox.
       </p>
       <NuxtLink
-        v-for="result in finished"
+        v-for="result in group.results"
         :key="result.opId"
         :to="`/result/${result.opId}`"
-        class="rule-thin flex flex-wrap items-baseline gap-x-3 px-5 py-3 text-lg font-semibold hover:bg-wash"
+        class="rule-thin flex min-h-16 flex-wrap items-baseline gap-x-3 px-5 py-3 text-lg font-semibold hover:bg-wash active:bg-ink active:text-paper"
       >
         <span class="t-label text-2xl">{{ result.source.name }}</span>
         <span class="t-num text-2xl">{{ result.quantity }} шт.</span>
-        <span>→ {{ result.target?.location?.name }}</span>
+        <span>→ {{ result.target?.location?.name ?? '—' }}</span>
         <span
           v-if="result.target?.assetId"
           class="text-ink-soft"
         >UID {{ result.target.assetId }}</span>
+        <span
+          v-if="result.status !== 'done'"
+          class="ml-auto flex items-center gap-1"
+        >Подробнее <ArrowRight
+          class="size-5"
+          :stroke-width="2.5"
+        /></span>
       </NuxtLink>
     </section>
 
@@ -319,7 +440,7 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
 
     <section
       v-if="count"
-      class="flex flex-col gap-3"
+      class="flex flex-col gap-2"
       aria-label="Что переместить"
     >
       <article
@@ -327,31 +448,55 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
         :id="`line-${line.item.id}`"
         :key="line.item.id"
         class="frame scroll-mt-24 bg-paper"
-        :class="highlighted === line.item.id && 'outline-[4px] outline-offset-3 outline-ink'"
+        :class="[
+          highlighted === line.item.id && 'outline-[4px] outline-offset-3 outline-ink',
+          target && blocked.includes(line) && !lineState(line.item.id).loading && 'border-[5px]',
+        ]"
       >
         <div class="flex items-stretch">
           <ItemPhoto
             :item="line.item"
             decorative
-            class="w-16 shrink-0 border-r-[3px] border-ink bg-wash object-cover sm:w-28"
+            class="w-16 shrink-0 border-r-[3px] border-ink bg-wash object-cover sm:w-24"
           />
-          <div class="min-w-0 flex-1 px-4 py-3 sm:px-5">
+          <div class="min-w-0 flex-1 px-4 py-2 sm:px-5">
             <NuxtLink
               :to="`/item/${line.item.id}`"
-              class="t-label text-2xl break-words hover:underline hover:decoration-[3px] sm:text-3xl"
+              class="t-label text-2xl break-words hover:underline hover:decoration-[3px]"
             >
               {{ line.item.name }}
             </NuxtLink>
             <p class="text-base font-medium text-ink-soft">
-              <span v-if="line.item.assetId">UID {{ line.item.assetId }} · </span>{{ line.item.location?.name ?? 'Без места' }} · в наличии {{ line.item.quantity }} шт.
+              <span v-if="line.item.assetId">UID {{ line.item.assetId }} · </span>{{ line.item.location?.name ?? 'Без места' }}
             </p>
           </div>
+          <!-- The quantity is the row's own key: the stepper opens under it only when needed. -->
+          <button
+            v-if="line.item.quantity > 1"
+            type="button"
+            class="flex w-28 shrink-0 flex-col items-center justify-center border-l-[3px] border-ink px-2 hover:bg-wash active:bg-ink active:text-paper disabled:cursor-not-allowed sm:w-36"
+            :class="editing === line.item.id && 'bg-ink text-paper hover:bg-ink'"
+            :aria-expanded="editing === line.item.id"
+            :aria-label="`Количество «${line.item.name}»: ${line.quantity} из ${line.item.quantity}. Изменить`"
+            :disabled="moving"
+            @click="editing = editing === line.item.id ? null : line.item.id"
+          >
+            <span class="t-num text-4xl">{{ line.quantity }}</span>
+            <span class="t-small flex items-center gap-1">из {{ line.item.quantity }} <Pencil
+              class="size-4"
+              :stroke-width="2.5"
+            /></span>
+          </button>
+          <span
+            v-else
+            class="t-num flex w-28 shrink-0 items-center justify-center border-l-[3px] border-ink text-4xl sm:w-36"
+          >{{ line.quantity }}</span>
           <button
             type="button"
             class="flex w-16 shrink-0 items-center justify-center border-l-[3px] border-ink hover:bg-wash active:bg-ink active:text-paper disabled:cursor-not-allowed disabled:text-ink-soft sm:w-20"
             :aria-label="`Убрать «${line.item.name}» из корзины`"
             :disabled="moving"
-            @click="forget(line.item.id)"
+            @click="removeLine(line)"
           >
             <X
               class="size-8"
@@ -361,7 +506,7 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
         </div>
 
         <div
-          v-if="line.item.quantity > 1"
+          v-if="editing === line.item.id && line.item.quantity > 1"
           class="rule px-4 py-3 sm:px-5"
         >
           <QuantityStepper
@@ -372,7 +517,7 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
 
         <div
           v-if="target"
-          class="rule px-4 py-3 sm:px-5"
+          class="rule px-4 py-2 sm:px-5"
         >
           <p
             v-if="lineState(line.item.id).moving || lineState(line.item.id).loading"
@@ -432,8 +577,9 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
 
     <section
       v-if="count"
+      ref="whereSection"
       aria-labelledby="cart-where"
-      class="flex flex-col gap-3"
+      class="flex scroll-mt-24 flex-col gap-3"
     >
       <h2
         id="cart-where"
@@ -467,25 +613,49 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
 
     <!-- One confirmation for the whole cart. -->
     <ConfirmBar v-if="count">
-      <p class="flex items-center gap-x-3 text-lg font-semibold">
+      <p class="flex flex-wrap items-center gap-x-3 text-lg font-semibold">
         <span class="t-num shrink-0 text-3xl sm:text-4xl">{{ count }} поз. · {{ pieces }} шт.</span>
         <template v-if="target">
           <ArrowRight
             class="size-6 shrink-0"
             :stroke-width="3"
           />
-          <span class="t-label max-w-1/2 shrink-0 text-2xl break-words sm:text-3xl">{{ target.name }}</span>
-          <span class="min-w-0 truncate text-base sm:text-lg">{{ placeParents(target) }}</span>
+          <span class="t-label min-w-0 text-2xl break-words sm:text-3xl">{{ target.name }}</span>
         </template>
       </p>
-      <p class="mt-1 text-base sm:text-lg">
-        <template v-if="!target">
-          Отсканируйте полку или выберите её в списке.
-        </template>
-        <template v-else-if="blocked.length && !moving">
-          Проверьте строк: {{ blocked.length }} — выбор записи или ошибка.
-        </template>
+      <p
+        v-if="target && placeParents(target)"
+        class="text-base font-semibold break-words sm:text-lg"
+        data-target-path
+      >
+        {{ placeParents(target) }}
       </p>
+      <button
+        v-if="!target"
+        type="button"
+        class="mt-1 flex min-h-16 items-center gap-2 text-left text-lg font-semibold underline decoration-2 underline-offset-4 hover:bg-wash active:bg-ink active:text-paper"
+        @click="showWhere"
+      >
+        Отсканируйте полку или выберите её в списке
+        <ArrowDown
+          class="size-6 shrink-0"
+          :stroke-width="3"
+        />
+      </button>
+      <button
+        v-else-if="blocked.length && !moving && blocked.some(line => !lineState(line.item.id).loading)"
+        type="button"
+        class="hatch-attention mt-1 flex min-h-16 items-center border-[3px] border-ink p-1.5 text-left text-base sm:text-lg"
+        @click="showBlocked"
+      >
+        <span class="flex items-center gap-2 bg-paper px-2 py-1 font-semibold">
+          Проверьте строк: {{ blocked.length }} — выбор записи или ошибка. Показать
+          <ArrowDown
+            class="size-5 shrink-0"
+            :stroke-width="3"
+          />
+        </span>
+      </button>
       <template #action>
         <Button
           size="touch"

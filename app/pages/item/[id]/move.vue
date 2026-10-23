@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ItemDetail, LocationNode, TransferInput, TransferPreview, TransferResult } from '#shared/types/terminal'
 import type { PickedLocation } from '~/components/LocationPicker.vue'
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, ScanBarcode } from '@lucide/vue'
+import { ArrowDown, ArrowRight, Check, LoaderCircle, RefreshCw, ScanBarcode } from '@lucide/vue'
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
 
-const [{ data: item, error: itemError, refresh: refreshItem }, { data: tree, error: treeError }] = await Promise.all([
+const [{ data: item, error: itemError, refresh: refreshItem }, { data: tree, error: treeError, refresh: refreshTree }] = await Promise.all([
   useFetch<ItemDetail>(() => `/api/items/${id.value}`),
   useFetch<LocationNode[]>('/api/locations/tree'),
 ])
@@ -26,6 +26,10 @@ const submitError = ref<ApiError | null>(null)
 const notice = ref<string | null>(null)
 /** Kept across retries of the same confirmation, so a lost response never moves things twice. */
 let opId: string | null = null
+
+function reload() {
+  return Promise.all([itemError.value && refreshItem(), treeError.value && refreshTree()])
+}
 
 const loadError = computed(() => (itemError.value || treeError.value ? toApiError(itemError.value ?? treeError.value) : null))
 const currentId = computed(() => item.value?.location?.id ?? null)
@@ -85,6 +89,8 @@ async function loadPreview() {
     preview.value = result
     mergeIntoId.value = result.suggestedMergeIntoId
     mergeDecided.value = result.mergeCandidates.length <= 1
+    // The choice is the one thing left to do: bring it into view instead of leaving it off screen.
+    if (!mergeDecided.value) nextTick(showMerge)
   }
   catch (e) {
     if (seq === previewSeq) previewError.value = toApiError(e)
@@ -103,6 +109,11 @@ watch([target, quantity, item], () => {
 watch([target, quantity], () => {
   submitError.value = null
 })
+
+const mergeSection = ref<HTMLElement | null>(null)
+function showMerge() {
+  mergeSection.value?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+}
 
 const mergeTarget = computed(() => preview.value?.mergeCandidates.find(c => c.id === mergeIntoId.value) ?? null)
 
@@ -186,23 +197,26 @@ useScanner(async (code) => {
 
 <template>
   <div class="flex flex-col gap-8 short:gap-5">
-    <NuxtLink
-      :to="`/item/${id}`"
-      class="t-label flex w-fit items-center gap-2 text-xl hover:underline hover:decoration-[3px] hover:underline-offset-4"
-    >
-      <ArrowLeft
-        class="size-6"
-        :stroke-width="2.5"
-      />
+    <BackLink :to="`/item/${id}`">
       К карточке
-    </NuxtLink>
+    </BackLink>
 
     <StatusStrip
       v-if="loadError"
       kind="error"
       title="Не удалось загрузить"
       :message="loadError.message"
-    />
+    >
+      <Button
+        variant="outline"
+        size="touch"
+        class="mt-4 border-paper"
+        @click="reload()"
+      >
+        <RefreshCw />
+        Повторить
+      </Button>
+    </StatusStrip>
 
     <template v-else-if="item && tree">
       <header class="frame grid grid-cols-[1fr_auto] overflow-hidden bg-paper">
@@ -253,9 +267,56 @@ useScanner(async (code) => {
       </section>
 
       <section
-        v-if="preview?.mergeCandidates.length"
-        aria-labelledby="merge-heading"
+        aria-labelledby="where-heading"
         class="flex flex-col gap-3"
+      >
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <h2
+            id="where-heading"
+            class="t-label text-3xl"
+          >
+            Куда
+          </h2>
+          <p class="flex items-center gap-2 text-lg font-medium">
+            <ScanBarcode
+              class="size-6"
+              :stroke-width="2.5"
+            />
+            Отсканируйте этикетку полки или выберите ниже
+          </p>
+        </div>
+
+        <div
+          v-if="recent.length"
+          class="flex flex-wrap gap-3"
+          aria-label="Недавние места"
+        >
+          <button
+            v-for="place in recent.filter(r => r.id !== currentId)"
+            :key="place.id"
+            type="button"
+            class="frame flex min-h-16 flex-col items-start justify-center px-4 py-2 text-left"
+            :class="target?.id === place.id ? 'bg-ink text-paper' : 'bg-paper hover:bg-wash active:bg-ink active:text-paper'"
+            @click="chooseTarget(place)"
+          >
+            <span class="text-sm font-medium">{{ place.path.split(' / ').slice(0, -1).join(' / ') }}</span>
+            <span class="t-label text-2xl">{{ place.name }}</span>
+          </button>
+        </div>
+
+        <LocationPicker
+          v-model="target"
+          :tree="tree"
+          :current-id="currentId"
+        />
+      </section>
+
+
+      <section
+        v-if="preview?.mergeCandidates.length"
+        ref="mergeSection"
+        aria-labelledby="merge-heading"
+        class="flex scroll-mt-24 flex-col gap-3"
       >
         <h2
           id="merge-heading"
@@ -318,52 +379,6 @@ useScanner(async (code) => {
         </div>
       </section>
 
-      <section
-        aria-labelledby="where-heading"
-        class="flex flex-col gap-3"
-      >
-        <div class="flex flex-wrap items-end justify-between gap-3">
-          <h2
-            id="where-heading"
-            class="t-label text-3xl"
-          >
-            Куда
-          </h2>
-          <p class="flex items-center gap-2 text-lg font-medium">
-            <ScanBarcode
-              class="size-6"
-              :stroke-width="2.5"
-            />
-            Отсканируйте этикетку полки или выберите ниже
-          </p>
-        </div>
-
-        <div
-          v-if="recent.length"
-          class="flex flex-wrap gap-3"
-          aria-label="Недавние места"
-        >
-          <button
-            v-for="place in recent.filter(r => r.id !== currentId)"
-            :key="place.id"
-            type="button"
-            class="frame flex min-h-16 flex-col items-start justify-center px-4 py-2 text-left"
-            :class="target?.id === place.id ? 'bg-ink text-paper' : 'bg-paper hover:bg-wash active:bg-ink active:text-paper'"
-            @click="chooseTarget(place)"
-          >
-            <span class="text-sm font-medium">{{ place.path.split(' / ').slice(0, -1).join(' / ') }}</span>
-            <span class="t-label text-2xl">{{ place.name }}</span>
-          </button>
-        </div>
-
-        <LocationPicker
-          v-model="target"
-          :tree="tree"
-          :current-id="currentId"
-        />
-      </section>
-
-
       <!-- States the exact outcome before the tap. -->
       <ConfirmBar>
         <template v-if="!target">
@@ -375,15 +390,21 @@ useScanner(async (code) => {
           </p>
         </template>
         <template v-else>
-          <!-- One line: the path gives way to the quantity and the shelf name. -->
-          <p class="flex items-center gap-x-3 text-lg font-semibold">
+          <!-- The whole way to the shelf, never cut: «Полка 01» exists in every warehouse. -->
+          <p class="flex flex-wrap items-center gap-x-3 text-lg font-semibold">
             <span class="t-num shrink-0 text-3xl sm:text-4xl">{{ quantity }} шт.</span>
             <ArrowRight
               class="size-6 shrink-0"
               :stroke-width="3"
             />
-            <span class="t-label max-w-1/2 shrink-0 text-2xl break-words sm:text-3xl">{{ target.name }}</span>
-            <span class="min-w-0 truncate text-base sm:text-lg">{{ target.path.split(' / ').slice(0, -1).join(' / ') }}</span>
+            <span class="t-label min-w-0 text-2xl break-words sm:text-3xl">{{ target.name }}</span>
+          </p>
+          <p
+            v-if="target.path.includes(' / ')"
+            class="text-base font-semibold break-words sm:text-lg"
+            data-target-path
+          >
+            {{ target.path.split(' / ').slice(0, -1).join(' / ') }}
           </p>
           <p
             v-if="previewLoading"
@@ -395,12 +416,24 @@ useScanner(async (code) => {
             />
             Проверяем по Homebox…
           </p>
+          <button
+            v-else-if="outcome && !mergeDecided"
+            type="button"
+            class="hatch-attention mt-1 flex min-h-16 w-full items-center border-[3px] border-ink p-1.5 text-left text-base sm:text-lg"
+            @click="showMerge"
+          >
+            <span class="flex items-center gap-2 bg-paper px-2 py-1"><strong class="font-bold">{{ outcome.title }}</strong>
+              <ArrowDown
+                class="size-5 shrink-0"
+                :stroke-width="3"
+              />
+            </span>
+          </button>
           <p
             v-else-if="outcome"
             class="mt-1 text-base sm:text-lg"
-            :class="!mergeDecided && 'hatch-attention border-[3px] border-ink p-1.5'"
           >
-            <span :class="!mergeDecided && 'inline-block bg-paper px-2 py-1'"><strong class="font-bold">{{ outcome.title }}.</strong> <span class="hidden sm:inline">{{ outcome.detail }}</span></span>
+            <strong class="font-bold">{{ outcome.title }}.</strong> <span class="hidden sm:inline">{{ outcome.detail }}</span>
           </p>
         </template>
         <StatusStrip
