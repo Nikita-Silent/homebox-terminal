@@ -103,8 +103,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-8">
-    <h1 class="t-label max-w-4xl text-4xl sm:text-6xl">
+  <div class="flex flex-col gap-8 short:gap-6">
+    <h1 class="t-label max-w-4xl text-4xl sm:text-6xl short:sm:text-5xl">
       Отсканируйте этикетку или найдите оборудование
     </h1>
 

@@ -185,7 +185,7 @@ useScanner(async (code) => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-8 pb-64">
+  <div class="flex flex-col gap-8 short:gap-5">
     <NuxtLink
       :to="`/item/${id}`"
       class="t-label flex w-fit items-center gap-2 text-xl hover:underline hover:decoration-[3px] hover:underline-offset-4"
@@ -212,11 +212,11 @@ useScanner(async (code) => {
             decorative
             class="w-24 shrink-0 border-r-[3px] border-ink bg-wash object-cover sm:w-32"
           />
-          <h1 class="t-label min-w-0 self-center px-5 pt-4 pb-3 text-3xl break-words sm:text-5xl">
+          <h1 class="t-label min-w-0 self-center px-5 pt-4 pb-3 text-3xl break-words sm:text-5xl short:sm:text-4xl">
             {{ item.name }}
           </h1>
         </div>
-        <p class="t-num border-l-[3px] border-ink px-4 py-4 text-5xl sm:row-span-2 sm:px-5 sm:text-6xl">
+        <p class="t-num border-l-[3px] border-ink px-4 py-4 text-5xl sm:row-span-2 sm:px-5 sm:text-6xl short:sm:text-5xl">
           {{ item.quantity }}<span class="t-small ml-1 align-top">шт</span>
         </p>
         <dl class="rule col-span-2 px-5 py-3 sm:col-span-1">
@@ -364,56 +364,55 @@ useScanner(async (code) => {
       </section>
 
 
-      <!-- Confirmation bar: always in reach, states the exact outcome before the tap. -->
-      <div class="fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-ink bg-paper">
-        <div class="mx-auto flex max-w-[1280px] flex-col gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4 lg:flex-row lg:items-center">
-          <div class="min-w-0 flex-1">
-            <template v-if="!target">
-              <p class="t-label text-xl sm:text-2xl">
-                Выберите, куда переместить
-              </p>
-              <p class="hidden text-lg sm:block">
-                Отсканируйте полку или выберите её в списке.
-              </p>
-            </template>
-            <template v-else>
-              <p class="flex flex-wrap items-center gap-x-3 text-lg font-semibold">
-                <span class="t-num text-3xl sm:text-4xl">{{ quantity }} шт.</span>
-                <ArrowRight
-                  class="size-6"
-                  :stroke-width="3"
-                />
-                <span class="text-base sm:text-lg">{{ target.path.split(' / ').slice(0, -1).join(' / ') }}</span>
-                <span class="t-label text-2xl sm:text-3xl">{{ target.name }}</span>
-              </p>
-              <p
-                v-if="previewLoading"
-                class="mt-1 flex items-center gap-2 text-lg"
-              >
-                <LoaderCircle
-                  class="size-5 animate-spin"
-                  :stroke-width="2.5"
-                />
-                Проверяем по Homebox…
-              </p>
-              <p
-                v-else-if="outcome"
-                class="mt-1 text-base sm:text-lg"
-                :class="!mergeDecided && 'hatch-attention border-[3px] border-ink p-1.5'"
-              >
-                <span :class="!mergeDecided && 'inline-block bg-paper px-2 py-1'"><strong class="font-bold">{{ outcome.title }}.</strong> <span class="hidden sm:inline">{{ outcome.detail }}</span></span>
-              </p>
-            </template>
-            <StatusStrip
-              v-if="previewError || submitError"
-              class="mt-3"
-              kind="error"
-              :message="(submitError ?? previewError)!.message"
+      <!-- States the exact outcome before the tap. -->
+      <ConfirmBar>
+        <template v-if="!target">
+          <p class="t-label text-xl sm:text-2xl">
+            Выберите, куда переместить
+          </p>
+          <p class="hidden text-lg sm:block">
+            Отсканируйте полку или выберите её в списке.
+          </p>
+        </template>
+        <template v-else>
+          <!-- One line: the path gives way to the quantity and the shelf name. -->
+          <p class="flex items-center gap-x-3 text-lg font-semibold">
+            <span class="t-num shrink-0 text-3xl sm:text-4xl">{{ quantity }} шт.</span>
+            <ArrowRight
+              class="size-6 shrink-0"
+              :stroke-width="3"
             />
-          </div>
+            <span class="t-label max-w-1/2 shrink-0 text-2xl break-words sm:text-3xl">{{ target.name }}</span>
+            <span class="min-w-0 truncate text-base sm:text-lg">{{ target.path.split(' / ').slice(0, -1).join(' / ') }}</span>
+          </p>
+          <p
+            v-if="previewLoading"
+            class="mt-1 flex items-center gap-2 text-lg"
+          >
+            <LoaderCircle
+              class="size-5 animate-spin"
+              :stroke-width="2.5"
+            />
+            Проверяем по Homebox…
+          </p>
+          <p
+            v-else-if="outcome"
+            class="mt-1 text-base sm:text-lg"
+            :class="!mergeDecided && 'hatch-attention border-[3px] border-ink p-1.5'"
+          >
+            <span :class="!mergeDecided && 'inline-block bg-paper px-2 py-1'"><strong class="font-bold">{{ outcome.title }}.</strong> <span class="hidden sm:inline">{{ outcome.detail }}</span></span>
+          </p>
+        </template>
+        <StatusStrip
+          v-if="previewError || submitError"
+          class="mt-3"
+          kind="error"
+          :message="(submitError ?? previewError)!.message"
+        />
+        <template #action>
           <Button
             size="touch"
-            class="h-16 w-full text-2xl sm:h-20 lg:w-auto lg:min-w-80"
+            class="h-16 w-full text-2xl sm:h-20 lg:w-auto lg:min-w-80 short:lg:min-w-64"
             :disabled="!canConfirm"
             @click="confirm"
           >
@@ -424,8 +423,8 @@ useScanner(async (code) => {
             <Check v-else />
             {{ submitting ? 'Перемещаем…' : submitError?.code === 'NETWORK' ? 'Повторить' : 'Подтвердить' }}
           </Button>
-        </div>
-      </div>
+        </template>
+      </ConfirmBar>
     </template>
 
     <div

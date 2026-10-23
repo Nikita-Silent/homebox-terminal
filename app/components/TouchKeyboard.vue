@@ -10,11 +10,14 @@ import type { KeyboardField, KeyboardLayout } from '~/utils/touch-keyboard'
  */
 
 const field = shallowRef<KeyboardField | null>(null)
+/** The panel waits for the tap to finish, see `show`. */
+const shown = ref(false)
 const layout = ref<KeyboardLayout>('ru')
 const shift = ref(false)
 const panel = ref<HTMLElement | null>(null)
 const height = ref(0)
 let savedInputMode: string | null = null
+let showTimer: ReturnType<typeof setTimeout> | undefined
 
 const letters = computed(() => {
   const rows = LETTERS[layout.value === 'en' ? 'en' : 'ru']
@@ -31,12 +34,29 @@ function open(el: KeyboardField) {
   // Set before the tap focuses the field, so a tablet does not raise its own keyboard as well.
   el.setAttribute('inputmode', 'none')
   field.value = el
+  // A long press may never end in a click.
+  showTimer = setTimeout(show, 500)
+}
+
+/**
+ * The panel appears once the opening tap has ended in its click. Shown earlier, it moves the page
+ * under the finger, and the click lands on whatever slid there: a key, or another shelf.
+ */
+function show() {
+  clearTimeout(showTimer)
+  if (field.value) shown.value = true
+}
+
+function onClick(event: MouseEvent) {
+  if (field.value && event.target === field.value) show()
 }
 
 function close({ blur = false } = {}) {
   const el = field.value
   if (!el) return
   field.value = null
+  shown.value = false
+  clearTimeout(showTimer)
   if (savedInputMode === null) el.removeAttribute('inputmode')
   else el.setAttribute('inputmode', savedInputMode)
   savedInputMode = null
@@ -100,15 +120,18 @@ let observer: ResizeObserver | undefined
 
 onMounted(() => {
   document.addEventListener('pointerdown', onPointerDown, true)
+  document.addEventListener('click', onClick)
   document.addEventListener('focusin', onFocusIn)
   document.addEventListener('focusout', onFocusOut)
   window.addEventListener('keydown', onKeyDown, true)
-  stopRouter = router.afterEach(() => close())
+  // A new screen, not a new query: live search rewrites `?q=` while the employee is still typing.
+  stopRouter = router.afterEach((to, from) => to.path !== from.path && close())
 })
 
 onBeforeUnmount(() => {
   close()
   document.removeEventListener('pointerdown', onPointerDown, true)
+  document.removeEventListener('click', onClick)
   document.removeEventListener('focusin', onFocusIn)
   document.removeEventListener('focusout', onFocusOut)
   window.removeEventListener('keydown', onKeyDown, true)
@@ -116,7 +139,8 @@ onBeforeUnmount(() => {
   observer?.disconnect()
 })
 
-// Room below the page so the keyboard never covers the field being typed into.
+// Room below the page so the keyboard never covers the field being typed into. A covered field
+// goes up to just under the rail, leaving the most room for what it filters below it.
 watch(panel, (el) => {
   observer?.disconnect()
   height.value = 0
@@ -125,26 +149,28 @@ watch(panel, (el) => {
     height.value = el.offsetHeight
     const target = field.value?.getBoundingClientRect()
     const top = el.getBoundingClientRect().top
-    if (target && target.bottom > top - 16) window.scrollBy({ top: target.bottom - top + 16 })
+    if (!target || target.bottom <= top - 16) return
+    const rail = document.querySelector('[data-app-rail]')?.getBoundingClientRect().bottom ?? 0
+    window.scrollBy({ top: target.top - rail - 16 })
   })
   observer.observe(el)
 })
 
-const keyClass = 'frame flex h-16 min-w-0 flex-1 items-center justify-center bg-paper select-none hover:bg-wash active:bg-ink active:text-paper'
+const keyClass = 'frame flex h-16 short:h-[64px] min-w-0 flex-1 items-center justify-center bg-paper select-none hover:bg-wash active:bg-ink active:text-paper'
 /** Enter and a held Shift: inverted, like the primary button. */
 const inkKey = 'bg-ink text-paper hover:bg-ink-soft active:bg-paper active:text-ink'
 </script>
 
 <template>
   <div
-    v-if="field"
+    v-if="field && shown"
     aria-hidden="true"
     :style="{ height: `${height}px` }"
   />
   <div
-    v-if="field"
+    v-if="field && shown"
     ref="panel"
-    class="fixed inset-x-0 bottom-0 z-50 border-t-[3px] border-ink bg-paper px-2 py-3 sm:px-4"
+    class="fixed inset-x-0 bottom-0 z-50 border-t-[3px] border-ink bg-paper px-2 py-3 sm:px-4 short:py-2"
     role="group"
     aria-label="Экранная клавиатура"
     @pointerdown.prevent

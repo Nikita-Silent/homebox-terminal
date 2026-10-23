@@ -64,7 +64,7 @@ function jump(letter: string) {
       Все склады
     </NuxtLink>
 
-    <h1 class="t-label text-4xl sm:text-6xl">
+    <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
       Всё оборудование
     </h1>
 

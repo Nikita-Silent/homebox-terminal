@@ -15,7 +15,10 @@ const navLink = (path: string) => [
 </script>
 
 <template>
-  <header class="sticky top-0 z-30 bg-ink text-paper">
+  <header
+    data-app-rail
+    class="sticky top-0 z-30 bg-ink text-paper"
+  >
     <div class="mx-auto flex h-16 max-w-[1280px] items-center gap-4 px-4 sm:gap-6 sm:px-8">
       <NuxtLink
         to="/"
@@ -70,7 +73,7 @@ const navLink = (path: string) => [
           <span class="t-num bg-paper px-1.5 text-xl text-ink">{{ cartCount }}</span>
         </NuxtLink>
         <template v-if="user">
-          <span class="hidden max-w-56 truncate text-base font-semibold md:inline">{{ user.name }}</span>
+          <span class="hidden max-w-56 truncate text-base font-semibold xl:inline">{{ user.name }}</span>
           <button
             type="button"
             :class="framed"

@@ -96,7 +96,7 @@ useScanner(async (code) => {
 
         <div class="grid gap-0 lg:grid-cols-[1fr_auto]">
           <div class="flex flex-col">
-            <h1 class="t-label px-5 pt-5 pb-4 text-4xl break-words sm:text-6xl">
+            <h1 class="t-label px-5 pt-5 pb-4 text-4xl break-words sm:text-6xl short:sm:text-5xl">
               {{ item.name }}
             </h1>
 
@@ -147,7 +147,7 @@ useScanner(async (code) => {
                 >
                   {{ pathText(parents) }}
                 </p>
-                <p class="t-label mt-1 text-5xl break-words sm:text-6xl">
+                <p class="t-label mt-1 text-5xl break-words sm:text-6xl short:sm:text-5xl">
                   {{ shelf?.name ?? 'Без локации' }}
                 </p>
               </div>
@@ -155,7 +155,7 @@ useScanner(async (code) => {
                 <p class="t-small">
                   В наличии
                 </p>
-                <p class="t-num text-7xl sm:text-8xl">
+                <p class="t-num text-7xl sm:text-8xl short:sm:text-7xl">
                   {{ item.quantity }}<span class="t-label ml-2 text-xl sm:ml-0 sm:block sm:text-right">шт.</span>
                 </p>
               </div>

@@ -25,7 +25,7 @@ const roots = computed(() => [...(tree.value ?? [])].sort((a, b) => a.name.local
       К поиску
     </NuxtLink>
 
-    <h1 class="t-label text-4xl sm:text-6xl">
+    <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
       Выберите, где искать
     </h1>
     <p class="-mt-3 text-lg">

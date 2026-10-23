@@ -89,8 +89,8 @@ onBeforeUnmount(() => {
       aria-hidden="true"
     />
     <template v-if="problem">
-      <span class="flex items-center px-2 sm:hidden">{{ label[0] }}</span>
-      <span class="hidden items-center px-3 sm:flex">{{ label[1] }}</span>
+      <span class="flex items-center px-2 xl:hidden">{{ label[0] }}</span>
+      <span class="hidden items-center px-3 xl:flex">{{ label[1] }}</span>
     </template>
   </button>
   <div

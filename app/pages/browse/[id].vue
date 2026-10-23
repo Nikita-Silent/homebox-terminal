@@ -66,7 +66,7 @@ useBrowseScanner((message) => {
             >{{ step.name }}</NuxtLink>
           </template>
         </nav>
-        <h1 class="t-label text-5xl break-words sm:text-7xl">
+        <h1 class="t-label text-5xl break-words sm:text-7xl short:sm:text-6xl">
           {{ data.location.name }}
         </h1>
       </header>

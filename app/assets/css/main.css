@@ -41,6 +41,12 @@
   color-scheme: light;
 }
 
+/*
+  Screen height of the 1024×768 terminal (and any screen up to ~800px tall): headings and gaps
+  tighten so the work fits above the fold. Tap targets keep the 64px minimum.
+*/
+@custom-variant short (@media (max-height: 820px));
+
 @theme inline {
   --font-sans: "Roboto Flex Variable", system-ui, sans-serif;
   --radius-sm: 0px;

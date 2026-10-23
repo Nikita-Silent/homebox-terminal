@@ -60,7 +60,7 @@ const headline = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 sm:gap-6">
+  <div class="flex flex-col gap-4 sm:gap-6 short:sm:gap-4">
     <StatusStrip
       v-if="apiError"
       kind="error"
@@ -75,7 +75,7 @@ const headline = computed(() => {
         :class="result.status === 'done' && 'label-feed'"
       >
         <header
-          class="flex items-center gap-4 px-5 py-3 sm:py-4"
+          class="flex items-center gap-4 px-5 py-3 sm:py-4 short:sm:py-3"
           :class="{
             'bg-ink text-paper': result.status === 'done' || result.status === 'failed',
             'hatch-pending border-b-[3px] border-ink': result.status === 'pending',
@@ -84,7 +84,7 @@ const headline = computed(() => {
           role="status"
         >
           <span
-            class="t-label flex items-center gap-3 text-3xl sm:text-6xl"
+            class="t-label flex items-center gap-3 text-3xl sm:text-6xl short:sm:text-5xl"
             :class="(result.status === 'pending' || result.status === 'needs_attention') && 'bg-paper px-3 py-1 frame'"
           >
             <Check
@@ -96,25 +96,25 @@ const headline = computed(() => {
           </span>
         </header>
 
-        <div class="px-5 pt-3 pb-1 sm:pt-5 sm:pb-2">
-          <p class="t-label text-2xl break-words sm:text-5xl">
+        <div class="px-5 pt-3 pb-1 sm:pt-5 sm:pb-2 short:sm:pt-3 short:sm:pb-1">
+          <p class="t-label text-2xl break-words sm:text-5xl short:sm:text-3xl">
             {{ result.source.name }}
           </p>
         </div>
 
         <div class="grid items-stretch gap-0 sm:grid-cols-[auto_1fr]">
-          <div class="flex flex-col justify-end px-5 py-2 sm:py-4">
+          <div class="flex flex-col justify-end px-5 py-2 sm:py-4 short:sm:py-2">
             <p
               v-if="result.status !== 'done'"
               class="t-small"
             >
               Количество
             </p>
-            <p class="t-num text-6xl sm:text-8xl">
+            <p class="t-num text-6xl sm:text-8xl short:sm:text-7xl">
               {{ result.quantity }}<span class="t-label ml-2 text-2xl">шт.</span>
             </p>
           </div>
-          <div class="flex flex-col justify-end border-t-[3px] border-ink px-5 py-3 sm:border-t-0 sm:border-l-[3px] sm:py-4">
+          <div class="flex flex-col justify-end border-t-[3px] border-ink px-5 py-3 sm:border-t-0 sm:border-l-[3px] sm:py-4 short:sm:py-3">
             <p class="t-small">
               {{ result.status === 'done' ? 'Теперь лежит' : 'Куда' }}
             </p>
@@ -125,7 +125,7 @@ const headline = computed(() => {
               >
                 {{ pathText(result.target.path.slice(0, -1)) }}
               </p>
-              <p class="t-label text-4xl break-words sm:text-6xl">
+              <p class="t-label text-4xl break-words sm:text-6xl short:sm:text-5xl">
                 {{ result.target.location?.name }}
               </p>
               <p class="mt-2 flex flex-wrap items-baseline gap-x-4 text-lg font-semibold">
@@ -147,7 +147,7 @@ const headline = computed(() => {
 
         <div
           v-if="result.status === 'done'"
-          class="rule px-5 py-3 text-base font-medium sm:py-4 sm:text-lg"
+          class="rule px-5 py-3 text-base font-medium sm:py-4 sm:text-lg short:sm:py-3"
         >
           <template v-if="result.kind === 'whole'">
             Запись переехала целиком вместе с историей.
@@ -191,12 +191,13 @@ const headline = computed(() => {
         </p>
       </article>
 
-      <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+      <!-- On a short screen a long label would push the next step below the edge: it stays pinned. -->
+      <div class="grid gap-3 sm:grid-cols-[1fr_auto] short:sticky short:bottom-0 short:z-10 short:-mt-4 short:border-t-[3px] short:border-ink short:bg-paper short:py-3">
         <Button
           ref="nextButton"
           as-child
           size="touch"
-          class="h-auto min-h-20 py-3 text-2xl whitespace-normal sm:min-h-24 sm:py-4 sm:text-3xl"
+          class="h-auto min-h-20 py-3 text-2xl whitespace-normal sm:min-h-24 sm:py-4 sm:text-3xl short:sm:min-h-20 short:sm:py-3"
         >
           <NuxtLink to="/">
             <ScanBarcode class="size-8" />
@@ -208,7 +209,7 @@ const headline = computed(() => {
           as-child
           size="touch"
           variant="outline"
-          class="h-auto min-h-24 py-4 whitespace-normal"
+          class="h-auto min-h-24 py-4 whitespace-normal short:sm:min-h-20 short:sm:py-3"
         >
           <NuxtLink :to="`/item/${result.source.id}/move`">
             <RotateCcw />
@@ -220,7 +221,7 @@ const headline = computed(() => {
           as-child
           size="touch"
           variant="outline"
-          class="h-auto min-h-24 py-4 whitespace-normal"
+          class="h-auto min-h-24 py-4 whitespace-normal short:sm:min-h-20 short:sm:py-3"
         >
           <NuxtLink :to="`/item/${result.target?.id ?? result.source.id}`">
             Открыть карточку

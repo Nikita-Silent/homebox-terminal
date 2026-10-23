@@ -312,9 +312,14 @@ describe('TouchKeyboard', () => {
     document.body.append(host)
     const wrapper = await mountSuspended(TouchKeyboard, { attachTo: document.body })
     const input = host.querySelector('input')!
-    const tap = async (el: Element = input) => {
+    const press = async (el: Element = input) => {
       el.dispatchEvent(new Event('pointerdown', { bubbles: true }))
       ;(el as HTMLElement).focus()
+      await nextTick()
+    }
+    const tap = async (el: Element = input) => {
+      await press(el)
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await nextTick()
     }
     const key = (name: string) => wrapper.findAll('button').find(b => b.text() === name || b.attributes('aria-label') === name)!
@@ -322,7 +327,7 @@ describe('TouchKeyboard', () => {
       wrapper.unmount()
       host.remove()
     }
-    return { wrapper, host, input, tap, key }
+    return { wrapper, host, input, press, tap, key }
   }
 
   it('opens on a tapped text field, types Russian, English and digits, and searches on «Найти»', async () => {
@@ -382,5 +387,43 @@ describe('TouchKeyboard', () => {
     await tap(host.querySelector('button')!)
     expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
     expect(input.hasAttribute('inputmode')).toBe(false)
+  })
+
+  it('comes up only when the opening tap has ended, so its click cannot land on what moved under it', async () => {
+    vi.useFakeTimers()
+    try {
+      const { wrapper, input, press } = await setup('<input>')
+      await press()
+      // Already set while the finger is down: a tablet must not raise its own keyboard.
+      expect(input.getAttribute('inputmode')).toBe('none')
+      expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+      input.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await nextTick()
+      expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(true)
+
+      // A long press that never clicks still gets the keyboard.
+      input.blur()
+      await nextTick()
+      await press()
+      expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
+      vi.advanceTimersByTime(500)
+      await nextTick()
+      expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(true)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stays up while live search rewrites the query, and hides on a new screen', async () => {
+    signInAs(staff)
+    const { wrapper, tap } = await setup('<input>')
+    const router = useRouter()
+    await tap()
+    await router.replace({ query: { q: 'каб' } })
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(true)
+    await router.push('/cart')
+    await nextTick()
+    expect(wrapper.find('[aria-label="Экранная клавиатура"]').exists()).toBe(false)
   })
 })

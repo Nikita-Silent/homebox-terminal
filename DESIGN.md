@@ -162,9 +162,11 @@ A strict monochrome print palette: black ink on white paper, with two greys that
 
 ## Layout
 
+Two terminal screens are the design case, both full screen with no browser chrome: the 1024×768 touch monitor (the main one) and a 1280-wide one. Breakpoints are in CSS px (rem in media queries is the browser's 16px, not the 18px root), so 1024 is already lg. Screens up to 820px tall get the `short:` variant: display headings step down one size (6xl → 5xl, 7xl → 6xl), section gaps and the top padding tighten; tap targets keep their sizes.
+
 A single centred column, max 1280px, with a 1rem gutter on phones and 2rem from sm up. Sections stack with 2rem gaps; related controls sit 0.75rem apart. Framed surfaces are internally partitioned by 3px rules into cells with 1.25rem padding, like fields on a printed label; secondary partitions inside a list or definition grid use 1px rules.
 
-A black rail (64px tall, sticky) tops every screen. On the move screen a confirmation bar is fixed to the bottom edge, separated by a 3px top rule, so the confirm action and the exact outcome are always in reach. Layout steps: grids collapse to one column on phones; the search field and its Find/Camera buttons go side by side at lg; the step labels go three-up at sm; cells that sit side by side at sm stack with a 3px top rule on phones.
+A black rail (64px tall, sticky) tops every screen. On the move screen and in the cart a confirmation bar (`ConfirmBar`) is fixed to the bottom edge, separated by a 3px top rule, so the confirm action and the exact outcome are always in reach. Its first line is one row: quantity → shelf name, then the path in small type that truncates first. A spacer of the bar's own height ends the page, so nothing is left under it. On short screens the result's actions stick to the bottom edge the same way, behind a 3px rule. Layout steps: grids collapse to one column on phones; the search field and its Find/Camera buttons go side by side at lg; the step labels go three-up at sm; cells that sit side by side at sm stack with a 3px top rule on phones.
 
 **The Arm's Length Rule.** Minimum hit size is 64px in both dimensions for anything tappable (primary actions are 80-96px tall). Gloves are the design case, not the edge case.
 
@@ -193,6 +195,7 @@ Heavy, square and inverting: a button is a punched-out block of print.
 - **Style:** 3px ink frame on paper, square, 80px tall for the main search (64px for the location filter), 1.5rem semibold text, regular-weight faded-ink placeholder. Search icon sits inside the frame at the left.
 - **Focus:** a 4px ink outline outside the frame, offset 3px.
 - **Stepper:** a framed strip of minus / numeral field / plus, each button 80px wide separated by 3px rules, the value in the numeral face at 3.75rem. A disabled step button gets a dashed inner frame and faded-ink glyph.
+- **On-screen keyboard:** a paper panel fixed to the bottom edge behind a 3px rule, framed square keys (64px tall on short screens, 72px otherwise), Enter inverted. It appears only after the tap on the field has ended, so that tap never lands on a key or on whatever the page moved under the finger. A field it would cover goes up to just under the rail, leaving room for what the field filters.
 
 ### Lists and Rows
 - **Item row:** a framed link with the name in caps (1.5-1.875rem), metadata in faded ink beneath, and the quantity in the numeral face at the right. Hover washes, pressed inverts.
@@ -237,7 +240,7 @@ A framed strip with a 28px icon, optional caps title and a body message. Info is
 **The Attention Band Rule.** Attention is a cross-hatched band at the full height of the message, with the message set on a paper chip on top of it. Never a small hatched square beside text: at that size it reads as a checkbox.
 
 ### Navigation
-- **App rail:** black, 64px tall, sticky. The wordmark is condensed caps at 1.5rem; the scanner status is in the small label face. Rail controls are paper-framed (3px) on black, invert to paper on hover, and use a paper focus ring. Signed in, the rail stays quiet: admins get two plain caps links «Журнал» and «Сотрудники» (the current one underlined 3px); the employee's name is plain text at the right, followed by the one framed control, «Выйти». Fullscreen is an icon-only 48px square that shows a frame only on hover. Staff see no sections at all. Below sm the section links become icons (the current one gets a 3px paper bar under it), «Выйти» keeps only its icon and fullscreen hides; below md the name hides.
+- **App rail:** black, 64px tall, sticky. The wordmark is condensed caps at 1.5rem; the scanner status is in the small label face. Rail controls are paper-framed (3px) on black, invert to paper on hover, and use a paper focus ring. Signed in, the rail stays quiet: admins get two plain caps links «Журнал» and «Сотрудники» (the current one underlined 3px); the employee's name is plain text at the right, followed by the one framed control, «Выйти». Fullscreen is an icon-only 48px square that shows a frame only on hover. Staff see no sections at all. Below sm the section links become icons (the current one gets a 3px paper bar under it), «Выйти» keeps only its icon and fullscreen hides; below xl (1280px) the name hides and a Homebox problem shows its short label («Нет Homebox»), so the rail fits 1024 with every section, the cart and a problem at once.
 - **Back links:** caps text with a left arrow; hover adds a 3px underline.
 
 ### The Printed Label (signature)

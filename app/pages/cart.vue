@@ -236,9 +236,9 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
 </script>
 
 <template>
-  <div class="flex flex-col gap-8 pb-64">
+  <div class="flex flex-col gap-8 short:gap-5">
     <div class="flex flex-wrap items-end justify-between gap-4">
-      <h1 class="t-label text-4xl sm:text-6xl">
+      <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
         Корзина
       </h1>
       <Button
@@ -465,36 +465,31 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
       />
     </section>
 
-    <!-- One confirmation for the whole cart, always in reach. -->
-    <div
-      v-if="count"
-      class="fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-ink bg-paper"
-    >
-      <div class="mx-auto flex max-w-[1280px] flex-col gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4 lg:flex-row lg:items-center">
-        <div class="min-w-0 flex-1">
-          <p class="flex flex-wrap items-center gap-x-3 text-lg font-semibold">
-            <span class="t-num text-3xl sm:text-4xl">{{ count }} поз. · {{ pieces }} шт.</span>
-            <template v-if="target">
-              <ArrowRight
-                class="size-6"
-                :stroke-width="3"
-              />
-              <span class="text-base sm:text-lg">{{ placeParents(target) }}</span>
-              <span class="t-label text-2xl sm:text-3xl">{{ target.name }}</span>
-            </template>
-          </p>
-          <p class="mt-1 text-base sm:text-lg">
-            <template v-if="!target">
-              Отсканируйте полку или выберите её в списке.
-            </template>
-            <template v-else-if="blocked.length && !moving">
-              Проверьте строк: {{ blocked.length }} — выбор записи или ошибка.
-            </template>
-          </p>
-        </div>
+    <!-- One confirmation for the whole cart. -->
+    <ConfirmBar v-if="count">
+      <p class="flex items-center gap-x-3 text-lg font-semibold">
+        <span class="t-num shrink-0 text-3xl sm:text-4xl">{{ count }} поз. · {{ pieces }} шт.</span>
+        <template v-if="target">
+          <ArrowRight
+            class="size-6 shrink-0"
+            :stroke-width="3"
+          />
+          <span class="t-label max-w-1/2 shrink-0 text-2xl break-words sm:text-3xl">{{ target.name }}</span>
+          <span class="min-w-0 truncate text-base sm:text-lg">{{ placeParents(target) }}</span>
+        </template>
+      </p>
+      <p class="mt-1 text-base sm:text-lg">
+        <template v-if="!target">
+          Отсканируйте полку или выберите её в списке.
+        </template>
+        <template v-else-if="blocked.length && !moving">
+          Проверьте строк: {{ blocked.length }} — выбор записи или ошибка.
+        </template>
+      </p>
+      <template #action>
         <Button
           size="touch"
-          class="h-16 w-full text-2xl sm:h-20 lg:w-auto lg:min-w-80"
+          class="h-16 w-full text-2xl sm:h-20 lg:w-auto lg:min-w-80 short:lg:min-w-64"
           :disabled="!canMove"
           @click="moveAll"
         >
@@ -505,7 +500,7 @@ const placeParents = (place: PickedLocation) => place.path.split(' / ').slice(0,
           <Check v-else />
           {{ moving ? 'Перемещаем…' : 'Переместить всё' }}
         </Button>
-      </div>
-    </div>
+      </template>
+    </ConfirmBar>
   </div>
 </template>

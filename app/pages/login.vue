@@ -105,7 +105,7 @@ const keyClass = 't-num frame flex h-20 items-center justify-center bg-paper tex
     </StatusStrip>
 
     <template v-else-if="!chosen">
-      <h1 class="t-label text-4xl sm:text-6xl">
+      <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
         Кто работает?
       </h1>
 
@@ -124,7 +124,7 @@ const keyClass = 't-num frame flex h-20 items-center justify-center bg-paper tex
 
       <ul
         v-else
-        class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
         aria-label="Сотрудники"
       >
         <li
@@ -141,7 +141,7 @@ const keyClass = 't-num frame flex h-20 items-center justify-center bg-paper tex
               :stroke-width="2.5"
               aria-hidden="true"
             />
-            <span class="t-label text-2xl break-words sm:text-3xl">{{ person.name }}</span>
+            <span class="t-label min-w-0 text-2xl break-words sm:text-3xl">{{ person.name }}</span>
           </button>
         </li>
       </ul>

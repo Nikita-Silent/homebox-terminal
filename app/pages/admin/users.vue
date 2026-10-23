@@ -88,8 +88,8 @@ const tileState = (chosen: boolean) => (chosen ? 'bg-ink text-paper' : 'bg-paper
 </script>
 
 <template>
-  <div class="flex flex-col gap-8">
-    <h1 class="t-label text-4xl sm:text-6xl">
+  <div class="flex flex-col gap-8 short:gap-6">
+    <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
       Сотрудники
     </h1>
 

@@ -153,7 +153,7 @@ const customInvalid = computed(() => period.value === 'custom' && !range.value)
 
 <template>
   <div class="flex flex-col gap-6">
-    <h1 class="t-label text-4xl sm:text-6xl">
+    <h1 class="t-label text-4xl sm:text-6xl short:sm:text-5xl">
       Журнал перемещений
     </h1>
 
