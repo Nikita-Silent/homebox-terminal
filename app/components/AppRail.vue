@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut, Maximize, Minimize, ScanBarcode, ScrollText, ShoppingBasket, Users } from '@lucide/vue'
+import { LogOut, Maximize, Minimize, ScrollText, ShoppingBasket, Users } from '@lucide/vue'
 
 const { isFullscreen, toggle, isSupported } = useFullscreen()
 const { user, signOut } = useAuth()
@@ -23,17 +23,6 @@ const navLink = (path: string) => [
       >
         Склад
       </NuxtLink>
-      <span
-        v-if="user"
-        class="t-small hidden items-center gap-2 lg:flex"
-        aria-live="polite"
-      >
-        <ScanBarcode
-          class="size-5"
-          :stroke-width="2.5"
-        />
-        Сканер слушает
-      </span>
 
       <nav
         v-if="user?.role === 'admin'"
