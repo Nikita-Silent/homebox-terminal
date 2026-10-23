@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
-import { apiSignIn, STAFF } from './fixtures'
+// The project's test brings the staff member the API checks sign in as.
+import { apiSignIn, expect, STAFF, test } from './fixtures'
 
 test.describe('security', () => {
   test('pages carry a strict CSP and cannot be framed', async ({ request }) => {

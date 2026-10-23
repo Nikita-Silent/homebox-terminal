@@ -95,6 +95,11 @@ export function createHomeboxClient(options: HomeboxClientOptions) {
       return request<HbStatus>('GET', '/status')
     },
 
+    /** The API key's own user: a cheap call that fails with 401 when the key is not accepted. */
+    async checkAccess(): Promise<void> {
+      await send('GET', '/users/self')
+    },
+
     /**
      * Lists non-location entities. `parentIds` is not recursive. `q` matches name, model and serial
      * number; from 0.27.0 also notes, tags and custom fields, and `#000-011` matches the asset id.

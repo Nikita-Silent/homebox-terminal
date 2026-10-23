@@ -16,7 +16,7 @@ test.describe('moving equipment', () => {
     await expect(page.getByText('Запись переедет целиком.')).toBeVisible()
     await page.getByRole('button', { name: 'Подтвердить' }).click()
 
-    await expect(page.getByRole('status').first()).toContainText('Перемещено')
+    await expect(page.getByRole('main').getByRole('status').first()).toContainText('Перемещено')
     await expect(page.getByText('Сотрудник: Иван Петров')).toBeVisible()
     expect((await hb.get(router.id)).parent?.id).toBe(to.id)
   })
@@ -52,7 +52,7 @@ test.describe('moving equipment', () => {
     await expect(page.getByText('На полке станет 35 → 55 шт.', { exact: false })).toBeVisible()
     await page.getByRole('button', { name: 'Подтвердить' }).click()
     await expect(page).toHaveURL(/\/result\//)
-    await expect(page.getByRole('status').first()).toContainText('Перемещено')
+    await expect(page.getByRole('main').getByRole('status').first()).toContainText('Перемещено')
     await expect(page.getByText(`UID ${there.assetId}`)).toBeVisible()
 
     expect((await hb.get(clips.id)).quantity).toBe(30)

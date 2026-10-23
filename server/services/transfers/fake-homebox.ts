@@ -21,6 +21,7 @@ export function createFakeHomebox() {
   let seq = 0
   let fault: FaultHook | null = null
   let version = 'v0.27.0'
+  let access: 'ok' | 'unauthorized' | 'unreachable' = 'ok'
 
   function blank(id: string, name: string, isLocation: boolean, parentId: string | null): HbEntity {
     const timestamp = new Date(Date.UTC(2026, 0, 1, 0, 0, seq)).toISOString()
@@ -153,6 +154,9 @@ export function createFakeHomebox() {
     async getStatus() {
       return { build: { version } }
     },
+    async checkAccess() {
+      if (access !== 'ok') throw new HomeboxError(access === 'unauthorized' ? 401 : 0, access)
+    },
     async getByAssetId(assetId: string) {
       // Like Homebox: «000-011», «000011» and «11» all match; the result carries no photo ids.
       const wanted = Number(assetId.replace('-', ''))
@@ -197,6 +201,10 @@ export function createFakeHomebox() {
     /** What `/v1/status` reports, e.g. `v0.28.0`. */
     setVersion(value: string) {
       version = value
+    },
+    /** What the API key check (`/v1/users/self`) answers. */
+    setAccess(value: typeof access) {
+      access = value
     },
   }
 }

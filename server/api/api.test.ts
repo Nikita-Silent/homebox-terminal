@@ -20,8 +20,26 @@ const json = { 'content-type': 'application/json' }
 describe('health', () => {
   it('is public and says whether Homebox is configured, its version and whether it is tested', async () => {
     expect((await s.request('GET', '/api/health')).body).toEqual({
-      ok: true, homeboxConfigured: true, homeboxVersion: '0.27.0', homeboxTested: true,
+      ok: true, homebox: 'ok', homeboxConfigured: true, homeboxVersion: '0.27.0', homeboxTested: true,
     })
+  })
+
+  it('tells an unreachable Homebox from a refused API key', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    s.hb.setAccess('unauthorized')
+    expect((await s.request('GET', '/api/health')).body).toMatchObject({ homebox: 'unauthorized', homeboxVersion: '0.27.0' })
+    const { resetHomeboxLink } = await import('../utils/homebox-link')
+    resetHomeboxLink()
+    s.hb.setAccess('unreachable')
+    expect((await s.request('GET', '/api/health')).body).toMatchObject({ homebox: 'unreachable', homeboxVersion: null })
+  })
+
+  it('says when Homebox is not configured, without asking it', async () => {
+    const bare = await createTestServer({ homebox: { baseUrl: '', token: '' } })
+    expect((await bare.request('GET', '/api/health')).body).toEqual({
+      ok: true, homebox: 'not_configured', homeboxConfigured: false, homeboxVersion: null, homeboxTested: false,
+    })
+    bare.close()
   })
 
   it('flags a Homebox version the terminal was not checked against', async () => {

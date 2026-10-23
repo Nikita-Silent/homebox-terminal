@@ -21,8 +21,9 @@ const navLink = (path: string) => [
         to="/"
         class="t-label text-2xl tracking-wide focus-visible:outline-paper"
       >
-        Склад
+        Терминал
       </NuxtLink>
+      <HomeboxStatus />
 
       <nav
         v-if="user?.role === 'admin'"

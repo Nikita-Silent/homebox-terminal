@@ -101,6 +101,36 @@ describe('item index', () => {
   })
 })
 
+describe('homebox link', () => {
+  it('asks Homebox at most every 10 s and tells a refused key from an outage', async () => {
+    vi.useFakeTimers()
+    vi.resetModules()
+    const { checkHomeboxLink } = await import('./homebox-link')
+    // The same module instance the fresh import uses, so instanceof holds.
+    const { HomeboxError } = await import('../homebox/client')
+    vi.stubGlobal('useRuntimeConfig', () => ({ homebox: { baseUrl: 'http://hb', token: 'hb_x' } }))
+    const checkAccess = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new HomeboxError(401, 'unauthorized'))
+      .mockRejectedValueOnce(new HomeboxError(0, 'Homebox is unreachable'))
+      .mockRejectedValueOnce(new HomeboxError(502, 'Bad Gateway'))
+    vi.stubGlobal('useHomebox', () => ({ checkAccess }))
+
+    expect(await Promise.all([checkHomeboxLink(), checkHomeboxLink()])).toEqual(['ok', 'ok'])
+    expect(checkAccess).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(9_000)
+    expect(await checkHomeboxLink()).toBe('ok')
+    for (const expected of ['unauthorized', 'unreachable', 'unreachable']) {
+      vi.advanceTimersByTime(10_000)
+      expect(await checkHomeboxLink()).toBe(expected)
+    }
+
+    vi.stubGlobal('useRuntimeConfig', () => ({ homebox: { baseUrl: '', token: '' } }))
+    expect(await checkHomeboxLink()).toBe('not_configured')
+    expect(checkAccess).toHaveBeenCalledTimes(4)
+  })
+})
+
 describe('homebox version', () => {
   async function load() {
     vi.resetModules()

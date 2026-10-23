@@ -74,7 +74,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'ru' },
-      title: 'Склад — терминал',
+      title: 'Терминал склада',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
         { name: 'mobile-web-app-capable', content: 'yes' },

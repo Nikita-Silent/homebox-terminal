@@ -207,3 +207,17 @@ export type TerminalErrorCode
     | 'WRONG_PIN'
     | 'LOCKED'
     | 'INTERNAL'
+
+/** Whether the terminal can work with Homebox: reachable and the API key accepted. */
+export type HomeboxLink = 'ok' | 'unreachable' | 'unauthorized' | 'not_configured'
+
+/** `GET /api/health`: public, so the status pill shows on the sign-in screen too. */
+export interface HealthStatus {
+  ok: true
+  homebox: HomeboxLink
+  homeboxConfigured: boolean
+  /** `0.27.0`, or null when Homebox is not configured or did not answer. */
+  homeboxVersion: string | null
+  /** False for a version the terminal has not been checked against: look before trusting it. */
+  homeboxTested: boolean
+}

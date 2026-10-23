@@ -1,9 +1,10 @@
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { admin, item, signInAs, staff, tree } from '~/test/fixtures'
 import AppRail from './AppRail.vue'
 import CameraScanner from './CameraScanner.vue'
+import HomeboxStatus from './HomeboxStatus.vue'
 import ItemPhoto from './ItemPhoto.vue'
 import ItemRow from './ItemRow.vue'
 import LocationPicker from './LocationPicker.vue'
@@ -189,6 +190,60 @@ describe('AppRail', () => {
     const wrapper = await mountSuspended(AppRail)
     expect(wrapper.find('a[href="/admin/journal"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/admin/users"]').exists()).toBe(true)
+  })
+})
+
+describe('HomeboxStatus', () => {
+  const health = (homebox: string, homeboxVersion: string | null = '0.27.0', homeboxTested = true) =>
+    registerEndpoint('/api/health', () => ({ ok: true, homebox, homeboxConfigured: homebox !== 'not_configured', homeboxVersion, homeboxTested }))
+
+  async function mount() {
+    const wrapper = await mountSuspended(HomeboxStatus)
+    const status = () => wrapper.find('[role="status"]').text()
+    return { wrapper, status }
+  }
+
+  it('shows a working Homebox quietly and a problem loudly', async () => {
+    health('ok')
+    const { wrapper, status } = await mount()
+    await vi.waitFor(() => expect(status()).toBe('Homebox на связи'))
+    expect(wrapper.find('button').classes()).not.toContain('bg-paper')
+    expect(wrapper.find('button').attributes('title')).toBe('Homebox 0.27.0')
+
+    health('unreachable', null, false)
+    await wrapper.find('button').trigger('click')
+    await vi.waitFor(() => expect(status()).toBe('Homebox недоступен'))
+    expect(wrapper.find('button').classes()).toContain('bg-paper')
+    expect(wrapper.find('.hatch-attention').exists()).toBe(true)
+  })
+
+  it('names a refused key, a missing setup, an untested version and a lost terminal server', async () => {
+    const cases: [() => void, string][] = [
+      [() => health('unauthorized'), 'Homebox: ключ не принят'],
+      [() => health('not_configured', null, false), 'Homebox не настроен'],
+      [() => health('ok', '0.28.0', false), 'Homebox 0.28.0 не проверен'],
+      [() => registerEndpoint('/api/health', () => { throw createError({ statusCode: 502 }) }), 'Нет связи с терминалом'],
+    ]
+    for (const [setup, text] of cases) {
+      setup()
+      const { status } = await mount()
+      await vi.waitFor(() => expect(status()).toBe(text))
+    }
+  })
+
+  it('checks again every 20 s', async () => {
+    let calls = 0
+    registerEndpoint('/api/health', () => {
+      calls++
+      return { ok: true, homebox: 'ok', homeboxConfigured: true, homeboxVersion: '0.27.0', homeboxTested: true }
+    })
+    vi.useFakeTimers()
+    await mount()
+    await vi.advanceTimersByTimeAsync(0)
+    const first = calls
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(calls).toBe(first + 1)
+    vi.useRealTimers()
   })
 })
 

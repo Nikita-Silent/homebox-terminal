@@ -1,16 +1,11 @@
-export default defineEventHandler(async () => {
-  const config = useRuntimeConfig()
-  const homeboxConfigured = Boolean(config.homebox.baseUrl && config.homebox.token)
-  const { version, tested } = homeboxConfigured
+import type { HealthStatus } from '../../shared/types/terminal'
+
+/** Public: the Homebox status pill polls it on every screen, the sign-in screen included. */
+export default defineEventHandler(async (): Promise<HealthStatus> => {
+  const homebox = await checkHomeboxLink()
+  const { version, tested } = homebox === 'ok' || homebox === 'unauthorized'
     ? await getHomeboxVersion()
     : { version: null, tested: false }
 
-  return {
-    ok: true,
-    homeboxConfigured,
-    /** `0.27.0`, or null when Homebox is not configured or did not answer. */
-    homeboxVersion: version,
-    /** False for a version the terminal has not been checked against: look before trusting it. */
-    homeboxTested: tested,
-  }
+  return { ok: true, homebox, homeboxConfigured: homebox !== 'not_configured', homeboxVersion: version, homeboxTested: tested }
 })
