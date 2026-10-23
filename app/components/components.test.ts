@@ -208,13 +208,29 @@ describe('HomeboxStatus', () => {
     const { wrapper, status } = await mount()
     await vi.waitFor(() => expect(status()).toBe('Homebox на связи'))
     expect(wrapper.find('button').classes()).not.toContain('bg-paper')
-    expect(wrapper.find('button').attributes('title')).toBe('Homebox 0.27.0')
+    expect(wrapper.find('button').attributes('title')).toBeUndefined()
+    expect(wrapper.find('button').text()).toBe('')
+    expect(wrapper.find('.bg-connection-ok').exists()).toBe(true)
 
     health('unreachable', null, false)
     await wrapper.find('button').trigger('click')
     await vi.waitFor(() => expect(status()).toBe('Homebox недоступен'))
     expect(wrapper.find('button').classes()).toContain('bg-paper')
     expect(wrapper.find('.hatch-attention').exists()).toBe(true)
+  })
+
+  it('opens connection details on touch and closes them on the next tap', async () => {
+    health('ok')
+    const { wrapper, status } = await mount()
+    await vi.waitFor(() => expect(status()).toBe('Homebox на связи'))
+    const button = wrapper.find('button')
+    expect(button.attributes('aria-expanded')).toBe('false')
+    await button.trigger('click')
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.text()).toContain('Версия 0.27.0')
+    await button.trigger('click')
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.text()).not.toContain('Версия 0.27.0')
   })
 
   it('names a refused key, a missing setup, an untested version and a lost terminal server', async () => {

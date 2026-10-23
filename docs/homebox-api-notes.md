@@ -36,7 +36,7 @@
 - `GET /v1/users/self` с API-ключом — дешёвая проверка связи и ключа: 200 или 401 при чужом ключе
   (`/v1/status` ключ не проверяет). Терминал спрашивает его не чаще раза в 10 с (`server/utils/homebox-link.ts`)
   и отдаёт итог в `/api/health` (`homebox`: `ok`, `unreachable`, `unauthorized`, `not_configured`).
-  Плашка «Homebox на связи» в верхней панели (`app/components/HomeboxStatus.vue`) опрашивает его раз в 20 с;
+  Индикатор связи (зелёный квадрат при доступном Homebox) в верхней панели (`app/components/HomeboxStatus.vue`) опрашивает его раз в 20 с;
   `/api/health` открыт без входа и сессию не продлевает.
 
 ## Авторизация

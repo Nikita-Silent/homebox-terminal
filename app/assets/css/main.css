@@ -15,6 +15,8 @@
   --ink: #000000;
   --ink-soft: #333333;
   --wash: #ececec;
+  /* Explicit colour exception: connected Homebox marker in the rail. */
+  --connection-ok: #4ade80;
   --frame: 3px;
 
   --background: var(--paper);
@@ -67,6 +69,7 @@
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-wash: var(--wash);
+  --color-connection-ok: var(--connection-ok);
 }
 
 @layer base {

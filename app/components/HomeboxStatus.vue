@@ -2,8 +2,8 @@
 import type { HealthStatus, HomeboxLink } from '#shared/types/terminal'
 
 /**
- * Pill in the rail: can the terminal work with Homebox right now. Polls the public `/api/health`
- * (it does not extend the session); a tap checks again at once. Fine = a quiet outline,
+ * Connection marker in the rail. Polls the public `/api/health`
+ * (it does not extend the session); a tap checks again at once. Fine = a green square,
  * anything else = an inverted label with the attention cross-hatch.
  */
 
@@ -13,6 +13,13 @@ const POLL_MS = 20_000
 
 const state = ref<State>('checking')
 const version = ref<string | null>(null)
+const expanded = ref(false)
+const detailsId = useId()
+
+function toggleDetails() {
+  expanded.value = !expanded.value
+  if (expanded.value) refresh()
+}
 
 const LABELS: Record<Exclude<State, 'untested'>, [short: string, long: string]> = {
   checking: ['Homebox…', 'Проверяем Homebox'],
@@ -63,26 +70,36 @@ onBeforeUnmount(() => {
   >{{ label[1] }}</span>
   <button
     type="button"
-    class="t-label flex h-10 shrink-0 items-stretch border-[3px] text-sm whitespace-nowrap focus-visible:outline-paper"
+    class="t-label flex shrink-0 text-sm whitespace-nowrap focus-visible:outline-paper"
     :class="[
-      problem ? 'border-paper bg-paper text-ink' : 'border-paper text-paper hover:bg-paper hover:text-ink',
-      state === 'checking' && 'border-dashed',
+      problem
+        ? 'min-h-16 min-w-16 items-stretch border-[3px] border-paper bg-paper text-ink'
+        : 'size-16 items-center justify-center text-paper active:bg-ink-soft',
     ]"
-    :aria-label="`${label[1]}. Проверить ещё раз`"
-    :title="version ? `Homebox ${version}` : undefined"
-    @click="refresh"
+    :aria-label="`${label[1]}. ${expanded ? 'Скрыть статус' : 'Показать статус и проверить связь'}`"
+    :aria-expanded="expanded"
+    :aria-controls="detailsId"
+    @click="toggleDetails"
   >
     <span
-      class="w-4 shrink-0 border-r-[3px]"
-      :class="problem ? 'hatch-attention border-ink' : 'border-current'"
+      class="shrink-0"
+      :class="problem
+        ? 'w-4 border-r-[3px] hatch-attention border-ink'
+        : state === 'ok' ? 'size-3 bg-connection-ok' : 'size-3 border-2 border-dashed border-paper'"
       aria-hidden="true"
-    >
-      <span
-        v-if="state === 'ok'"
-        class="block size-full bg-current"
-      />
-    </span>
-    <span class="flex items-center px-2 sm:hidden">{{ label[0] }}</span>
-    <span class="hidden items-center px-3 sm:flex">{{ label[1] }}</span>
+    />
+    <template v-if="problem">
+      <span class="flex items-center px-2 sm:hidden">{{ label[0] }}</span>
+      <span class="hidden items-center px-3 sm:flex">{{ label[1] }}</span>
+    </template>
   </button>
+  <div
+    v-if="expanded"
+    :id="detailsId"
+    class="absolute inset-x-0 top-full border-b-[3px] border-paper bg-ink px-4 py-3 text-paper sm:px-8"
+  >
+    <p class="font-semibold">{{ label[1] }}</p>
+    <p v-if="version" class="text-sm">Версия {{ version }}</p>
+    <p class="mt-1 text-sm">Коснитесь индикатора ещё раз, чтобы скрыть.</p>
+  </div>
 </template>
